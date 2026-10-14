@@ -1,0 +1,210 @@
+class_name DuelBoss
+extends DuelHard
+
+# Leis temáticas do chefe da floresta: cada run sorteia UMA (RunManager).
+const LAW_FROG := "frog_devourer"
+const LAW_OWL := "owl_night"
+const LAW_FOREST := "closing_forest"
+const LAWS := [LAW_FROG, LAW_OWL, LAW_FOREST]
+
+# Ciclo em "jogadas" (cada lado que termina o turno = 1): 6 jogadas = 3 rodadas.
+const DAY_PLIES := 6
+const NIGHT_PLIES := 6
+const FOG_RADIUS := 2
+const TREE_INTERVAL_PLIES := 6
+const TREE_MAX := 6
+const TREE_START_COUNT := 2
+
+var law_id: String = LAW_FROG
+var is_night: bool = false
+var _phase_ply: int = 0
+var _tree_ply: int = 0
+
+func _init() -> void:
+	if RunManager != null:
+		law_id = RunManager.get_forest_boss_law_id(LAWS)
+
+var hazard_tiles: Array = []
+const FLIES_PER_TURN: int = 3
+const TURNS_BETWEEN_FLIES: int = 3
+
+var _turns_since_last_bite: int = 0
+var should_trigger_devour: bool = false
+var should_spawn_new_flies: bool = false
+var pending_devour_tiles: Array = []
+
+func setup(p_board: Board, p_human_team: int, p_ai_team: int, p_sudden_death_mgr: SuddenDeathManager) -> void:
+	super.setup(p_board, p_human_team, p_ai_team, p_sudden_death_mgr)
+	hazard_tiles = []
+	_turns_since_last_bite = 0
+	should_trigger_devour = false
+	should_spawn_new_flies = false
+	pending_devour_tiles.clear()
+	is_night = false
+	_phase_ply = 0
+	_tree_ply = 0
+
+func apply_board_modifiers() -> void:
+	board.night_boost_team = 0
+	match law_id:
+		LAW_FROG:
+			_roll_fly_tiles()
+			should_spawn_new_flies = true
+		LAW_FOREST:
+			for i in range(TREE_START_COUNT):
+				_spawn_tree(true)
+
+# O chefe não herda a Coroa de Ferro do Duelo Forte: o slot inimigo mostra
+# o Sapo Devorador (Lei só descritiva — a mecânica vive aqui e na view do sapo).
+func get_enemy_fixed_rules() -> Array[RuleCard]:
+	var rules: Array[RuleCard] = []
+	match law_id:
+		LAW_OWL:
+			rules.append(RuleOwlNight.new())
+		LAW_FOREST:
+			rules.append(RuleClosingForest.new())
+		_:
+			rules.append(RuleFrogDevourer.new())
+	return rules
+
+func uses_sudden_death() -> bool:
+	return false
+
+func requires_full_elimination() -> bool:
+	return true
+
+func on_turn_end(_board: Board) -> void:
+	if law_id != LAW_FROG:
+		return
+	_turns_since_last_bite += 1
+
+	if _turns_since_last_bite >= TURNS_BETWEEN_FLIES:
+		should_trigger_devour = true
+		pending_devour_tiles = hazard_tiles.duplicate()
+		should_spawn_new_flies = true
+		_turns_since_last_bite = 0
+
+# Chamado de fora (duel_turn_controller) bem na hora de nascer as moscas
+# novas — NÃO em on_turn_end(), porque rolar ali de imediato deixava
+# hazard_tiles apontando pra fileira seguinte de casas ENQUANTO o ataque
+# de língua nas casas antigas (pending_devour_tiles) ainda nem tinha
+# começado a animar. Como o destaque vermelho do tabuleiro é desenhado a
+# partir de hazard_tiles, isso fazia as casas novas aparecerem vermelhas
+# cedo demais, antes de qualquer mosca ter nascido lá.
+func roll_next_hazard_tiles() -> void:
+	_roll_fly_tiles()
+
+func _roll_fly_tiles() -> void:
+	hazard_tiles.clear()
+
+	var candidates: Array = []
+	for r in range(board.rows):
+		for c in range(board.cols):
+			if (r + c) % 2 == 1:
+				candidates.append(Vector2i(c, r))
+
+	candidates.shuffle()
+	var count = min(FLIES_PER_TURN, candidates.size())
+	for i in range(count):
+		hazard_tiles.append(candidates[i])
+
+func check_custom_victory() -> Dictionary:
+	var ai_pieces_remaining = board.count_pieces(ai_team)
+
+	if ai_pieces_remaining == 0:
+		return {
+			"ended": true,
+			"won": true,
+			"title": "CHEFAO DERROTADO!",
+			"details": ""
+		}
+
+	return {"ended": false, "won": false, "title": "", "details": ""}
+
+# --- Noite da Coruja / A Floresta Fecha ---
+
+# Chamado UMA vez por fim de turno (de qualquer lado) pelo controller. Muda o
+# estado (fase, árvores) e devolve os eventos pra view animar:
+# [{"type": "night"|"dawn"|"trees", "tiles": [...]}]
+func advance_turn() -> Array:
+	var events: Array = []
+	match law_id:
+		LAW_OWL:
+			_phase_ply += 1
+			var limit = NIGHT_PLIES if is_night else DAY_PLIES
+			if _phase_ply >= limit:
+				_phase_ply = 0
+				is_night = not is_night
+				board.night_boost_team = ai_team if is_night else 0
+				events.append({"type": "night" if is_night else "dawn", "tiles": []})
+		LAW_FOREST:
+			_tree_ply += 1
+			if _tree_ply >= TREE_INTERVAL_PLIES:
+				_tree_ply = 0
+				var pos = _spawn_tree(false)
+				if pos != Vector2i(-1, -1):
+					events.append({"type": "trees", "tiles": [pos]})
+	return events
+
+func count_trees() -> int:
+	var n = 0
+	for r in range(board.rows):
+		for c in range(board.cols):
+			var p: BoardPiece = board.grid[r][c]
+			if p != Board.EMPTY and p.is_tree:
+				n += 1
+	return n
+
+# Planta uma árvore numa casa escura vazia (nunca nas fileiras de promoção) sem
+# deixar nenhum dos lados sem jogada. Devolve a casa, ou (-1,-1) se não deu.
+func _spawn_tree(initial: bool) -> Vector2i:
+	if count_trees() >= TREE_MAX:
+		return Vector2i(-1, -1)
+	var deploy = board.get_max_deployment_rows()
+	var r_min = deploy if initial else 1
+	var r_max = board.rows - 1 - deploy if initial else board.rows - 2
+	var candidates: Array = []
+	for r in range(r_min, r_max + 1):
+		for c in range(board.cols):
+			if (r + c) % 2 == 1 and board.grid[r][c] == Board.EMPTY and not board.scorched_tiles.has(Vector2i(c, r)):
+				candidates.append(Vector2i(c, r))
+	candidates.shuffle()
+	for pos in candidates:
+		board.grid[pos.y][pos.x] = BoardPiece.make_tree()
+		if not board.get_all_valid_moves(human_team).is_empty() and not board.get_all_valid_moves(ai_team).is_empty():
+			return pos
+		board.grid[pos.y][pos.x] = Board.EMPTY
+	return Vector2i(-1, -1)
+
+func get_darkness() -> float:
+	return 0.45 if (law_id == LAW_OWL and is_night) else 0.0
+
+func get_status_text() -> String:
+	if law_id != LAW_OWL:
+		return ""
+	var limit = NIGHT_PLIES if is_night else DAY_PLIES
+	var rounds_left = int(ceil((limit - _phase_ply) / 2.0))
+	if is_night:
+		return "NOITE - amanhece em %d rodada(s)" % rounds_left
+	return "DIA - anoitece em %d rodada(s)" % rounds_left
+
+# Névoa da Noite da Coruja: é uma propriedade da CASA (não de quem está nela):
+# toda casa a mais de FOG_RADIUS de qualquer peça do jogador está no escuro. O
+# renderer cobre todas elas igual e só esconde a peça do chefe que estiver lá —
+# assim a névoa não entrega onde há peças.
+func is_fogged(pos: Vector2i) -> bool:
+	return fog_strength(pos) > 0.0
+
+# 0 = visível; sobe com a distância até a peça do jogador mais próxima.
+func fog_strength(pos: Vector2i) -> float:
+	if law_id != LAW_OWL or not is_night or board == null:
+		return 0.0
+	var best = 99
+	for r in range(board.rows):
+		for c in range(board.cols):
+			var q: BoardPiece = board.grid[r][c]
+			if q != Board.EMPTY and q.owner_team == human_team:
+				best = min(best, max(abs(r - pos.y), abs(c - pos.x)))
+	if best <= FOG_RADIUS:
+		return 0.0
+	return clampf(0.45 + 0.15 * (best - FOG_RADIUS - 1), 0.45, 0.8)

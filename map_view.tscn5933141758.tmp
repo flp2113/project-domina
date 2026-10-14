@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://c7vcub5eeqnhk"]
+
+[ext_resource type="Script" uid="uid://dbveiqlvxrjd4" path="res://scripts/map/map_view.gd" id="1_mqhvm"]
+
+[node name="MapView" type="Node2D" unique_id=2128327482]
+script = ExtResource("1_mqhvm")
+
+[node name="LinesContainer" type="Node2D" parent="." unique_id=1151606682]
+
+[node name="NodesContainer" type="Node2D" parent="." unique_id=30861437]
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1348797672]
+position_smoothing_enabled = true
