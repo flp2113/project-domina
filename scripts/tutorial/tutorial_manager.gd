@@ -97,6 +97,11 @@ func reset_duel_flags() -> void:
 func report_law_applied() -> void:
 	if not is_active or law_applied_announced or not objectives_begun:
 		return
+	# Só no duelo de Cartas e Leis: no Duelo 1 o jogador ainda não tem Leis (o
+	# letreiro ali vem de efeitos do próprio sistema) e a fala fora de hora
+	# atrapalhava o fim do duelo.
+	if current_step != Step.DUEL_3_CARDS_AND_LAWS:
+		return
 	law_applied_announced = true
 	law_first_applied.emit()
 

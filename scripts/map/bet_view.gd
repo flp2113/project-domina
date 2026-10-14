@@ -61,10 +61,7 @@ func _setup_ui() -> void:
 	canvas.layer = 70
 	add_child(canvas)
 
-	var bg = ColorRect.new()
-	bg.color = Color(0.05, 0.06, 0.09, 1.0)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	canvas.add_child(bg)
+	add_child(BiomeBackground.new())
 
 	hud_bar = HUDBar.new()
 	canvas.add_child(hud_bar)

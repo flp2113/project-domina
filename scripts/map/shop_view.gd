@@ -82,6 +82,7 @@ func _setup_ui() -> void:
 	canvas.name = "ShopUILayer"
 	canvas.layer = 70
 	add_child(canvas)
+	add_child(BiomeBackground.new())
 
 	# Tooltips dedicados
 	rule_tooltip = RuleCardTooltip.new()

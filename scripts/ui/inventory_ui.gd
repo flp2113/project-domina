@@ -23,6 +23,8 @@ func _ready() -> void:
 	layer = 95
 	visible = false
 
+const SAFE_BOTTOM: float = 80.0
+
 func setup() -> void:
 	_build_ui()
 
@@ -41,10 +43,13 @@ func _build_ui() -> void:
 
 	var center = CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Folga embaixo: em janelas cortadas pela barra de tarefas a borda de baixo
+	# não pode sumir; o modal fica centrado na área de cima.
+	center.offset_bottom = -SAFE_BOTTOM
 	add_child(center)
 
 	modal_panel = PanelContainer.new()
-	modal_panel.custom_minimum_size = Vector2(1800, 1020)
+	modal_panel.custom_minimum_size = Vector2(1800, 920)
 	modal_panel.add_theme_stylebox_override("panel", PixelUI.make_pixel_panel(Color(0.08, 0.09, 0.13, 0.98), Color(0.28, 0.65, 1.0), 28))
 	center.add_child(modal_panel)
 

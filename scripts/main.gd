@@ -106,6 +106,7 @@ func _ready() -> void:
 		node_type = MapNode.NodeType.Duelo
 		active_size = TutorialManager.get_duel_board_size(TutorialManager.current_step)
 
+	add_child(BiomeBackground.new())
 	current_duel = _create_duel(node_type)
 	_setup_board(active_size, node_type)
 	_setup_enemy_side()
@@ -391,6 +392,7 @@ func _on_tutorial_law_first_applied() -> void:
 	if tutorial_guide_view == null:
 		return
 	await get_tree().create_timer(1.0).timeout
+	# Se o duelo acabou, ou o jogador já está vendo outra fala, não interrompe.
 	if is_game_over or tutorial_guide_view.is_showing_sequence:
 		return
 	await tutorial_guide_view.play_sequence(TutorialManager.get_law_applied_lines())

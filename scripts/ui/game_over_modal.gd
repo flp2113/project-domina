@@ -149,7 +149,7 @@ func _run_rewards_animation() -> void:
 		row_box.add_child(lbl)
 
 		var coins_container = HBoxContainer.new()
-		coins_container.add_theme_constant_override("separation", 6)
+		coins_container.add_theme_constant_override("separation", 2)
 		row_box.add_child(coins_container)
 
 		var val_lbl = Label.new()
@@ -163,7 +163,7 @@ func _run_rewards_animation() -> void:
 
 		var current_delay = 0.14
 		for c in range(count):
-			var coin = PixelUI.make_coin_icon(22.0)
+			var coin = PixelUI.make_coin_icon(32.0)
 			coins_container.add_child(coin)
 			val_lbl.text = "+%d" % (c + 1)
 

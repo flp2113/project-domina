@@ -48,6 +48,7 @@ var node_art: Array = []            # [{base, ind}] na ordem de `steps`
 var trails: Array[TutorialTrail] = []
 var player_pawn: MapPlayerPawn
 var camera: Camera2D
+var island_base: IslandBase
 var board_node: Node2D
 var world_rect: Rect2 = Rect2()
 var highlight_pulse: float = 0.0
@@ -77,6 +78,9 @@ var steps: Array[int] = [
 ]
 
 func _ready() -> void:
+	var sky := SpaceBackground.new()   # céu estrelado atrás do mapa
+	sky.floater_alpha = 0.55           # ilhas/peças discretas (há texto por cima)
+	add_child(sky)
 	if not TutorialManager.is_active:
 		TutorialManager.start_tutorial()
 
@@ -180,6 +184,12 @@ func _setup_world(entry_index: int) -> void:
 	var frame_px = BoardSkin.get_frame_px(TILE_SIZE, BoardSkin.SKIN_TUTORIAL)
 	world_rect = Rect2(_board_origin, Vector2(_board_cols * TILE_SIZE, _board_rows * TILE_SIZE)).grow(frame_px)
 
+	# Base rochosa (o mapa é uma ilha no espaço); a câmera é ligada depois.
+	island_base = IslandBase.new()
+	island_base.name = "IslandBase"
+	add_child(island_base)
+	island_base.build(world_rect, MapView.MAP_SPRITE_SCALE, null)
+
 	board_node = Node2D.new()
 	board_node.name = "TutorialBoard"
 	board_node.draw.connect(_draw_board)
@@ -272,6 +282,7 @@ func _setup_world(entry_index: int) -> void:
 	camera.position = Vector2(0.0, _camera_target_y(_node_position(entry_index).y))
 	add_child(camera)
 	camera.make_current()
+	island_base.set_camera(camera)
 
 	_pawn_index = entry_index
 	_pawn_resting = true
@@ -350,7 +361,6 @@ func _process(delta: float) -> void:
 
 func _draw_board() -> void:
 	# Fora do tabuleiro: fundo escuro liso.
-	board_node.draw_rect(Rect2(Vector2(-6000, -6000), Vector2(12000, 12000)), CLEAR_COLOR)
 	BoardSkin.draw_frame(board_node, _board_origin, _board_rows, _board_cols, TILE_SIZE, Color.WHITE, BoardSkin.SKIN_TUTORIAL)
 	BoardSkin.draw_tiles(board_node, _board_origin, _board_rows, _board_cols, TILE_SIZE, Color.WHITE, Color.WHITE, BoardSkin.SKIN_TUTORIAL)
 	_draw_end_row()
@@ -457,9 +467,12 @@ func _refresh_button_states() -> void:
 
 func _camera_target_y(target_y: float) -> float:
 	var half_h = get_viewport_rect().size.y / 2.0
-	if world_rect.size.y <= half_h * 2.0:
-		return world_rect.get_center().y
-	return clampf(target_y, world_rect.position.y + half_h, world_rect.end.y - half_h)
+	var r: Rect2 = world_rect
+	if island_base != null:
+		r.size.y += island_base.extra_height()   # deixa a base rochosa à vista
+	if r.size.y <= half_h * 2.0:
+		return r.get_center().y
+	return clampf(target_y, r.position.y + half_h, r.end.y - half_h)
 
 func _move_camera_to(world_y: float, duration: float = 0.85) -> void:
 	if camera == null:

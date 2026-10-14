@@ -12,17 +12,8 @@ func _setup_ui() -> void:
 	canvas.name = "MenuUILayer"
 	add_child(canvas)
 
-	var bg = ColorRect.new()
-	bg.color = Color(0.05, 0.06, 0.09, 1.0)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	canvas.add_child(bg)
-
-	# Fundo decorativo — mesmo tabuleiro xadrez sutil usado no mapa, só
-	# pra não ficar uma tela totalmente vazia atrás do título.
-	var board_bg = ColorRect.new()
-	board_bg.color = Color(0.08, 0.09, 0.13, 1.0)
-	board_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	canvas.add_child(board_bg)
+	# Fundo: universo com estrelas (procedural, atrás de tudo).
+	add_child(SpaceBackground.new())
 
 	var center_box = VBoxContainer.new()
 	center_box.set_anchors_preset(Control.PRESET_CENTER)
@@ -32,21 +23,7 @@ func _setup_ui() -> void:
 	center_box.add_theme_constant_override("separation", 22)
 	canvas.add_child(center_box)
 
-	var title = Label.new()
-	title.text = "DOMINA"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 84)
-	title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
-	title.add_theme_color_override("font_outline_color", Color(0.05, 0.05, 0.08, 1.0))
-	title.add_theme_constant_override("outline_size", 12)
-	center_box.add_child(title)
-
-	var subtitle = Label.new()
-	subtitle.text = "um roguelite de damas"
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	subtitle.add_theme_font_size_override("font_size", 22)
-	subtitle.add_theme_color_override("font_color", Color(0.7, 0.75, 0.82))
-	center_box.add_child(subtitle)
+	center_box.add_child(_make_logo())
 
 	var spacer = Control.new()
 	spacer.custom_minimum_size = Vector2(10, 30)
@@ -64,10 +41,45 @@ func _setup_ui() -> void:
 	quit_btn.pressed.connect(_on_quit_pressed)
 	center_box.add_child(quit_btn)
 
+# Logo em pixel art: escolhe entre a versão grande (640x256) e a pequena (320x128)
+# a que der o maior tamanho com ESCALA INTEIRA que caiba na tela (sem borrar).
+func _make_logo() -> Control:
+	var vp: Vector2 = get_viewport().get_visible_rect().size
+	var max_w: float = vp.x * 0.7
+	var max_h: float = vp.y * 0.36
+	var best_tex: Texture2D = null
+	var best_scale: int = 1
+	var best_w: float = 0.0
+	for path in ["res://assets/sprites/ui/logo_domina.png", "res://assets/sprites/ui/logo_domina_pequena.png"]:
+		if not ResourceLoader.exists(path):
+			continue
+		var tex: Texture2D = load(path)
+		var k: int = maxi(1, int(minf(max_w / tex.get_width(), max_h / tex.get_height())))
+		var w: float = tex.get_width() * k
+		if w * k > 0 and w > best_w and tex.get_height() * k <= max_h * 1.05:
+			best_tex = tex
+			best_scale = k
+			best_w = w
+	if best_tex == null:
+		var fallback = Label.new()
+		fallback.text = "DOMINA"
+		fallback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		fallback.add_theme_font_size_override("font_size", 84)
+		return fallback
+	var logo = TextureRect.new()
+	logo.texture = best_tex
+	logo.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	logo.stretch_mode = TextureRect.STRETCH_SCALE
+	logo.custom_minimum_size = Vector2(best_tex.get_width() * best_scale, best_tex.get_height() * best_scale)
+	logo.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	return logo
+
 func _make_menu_button(text: String, bg_color: Color, border_color: Color) -> Button:
 	var btn = Button.new()
 	btn.text = text
 	btn.custom_minimum_size = Vector2(360, 68)
+	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	btn.add_theme_font_size_override("font_size", 28)
 	PixelUI.skin_button(btn, border_color)
 	return btn

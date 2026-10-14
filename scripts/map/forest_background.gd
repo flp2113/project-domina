@@ -216,8 +216,6 @@ func _distance_to_nodes(p: Vector2, node_points: Array) -> float:
 func _draw() -> void:
 	if _board_rect.size == Vector2.ZERO:
 		return
-	# Fora do tabuleiro: verde-escuro quase preto.
-	draw_rect(Rect2(Vector2(-6000, -6000), Vector2(12000, 12000)), Color(0.04, 0.06, 0.04))
 
 	for t in _tiles:
 		var tex: Texture2D = t[0]

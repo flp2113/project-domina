@@ -106,7 +106,7 @@ func _build_ui() -> void:
 	# --- Caixa de diálogo principal (sequência de falas, bloqueia até
 	# o jogador clicar "continuar") ---
 	dialogue_panel = PanelContainer.new()
-	dialogue_panel.add_theme_stylebox_override("panel", PixelUI.make_pixel_panel(Color(0.08, 0.09, 0.13, 0.97), Color(0.9, 0.75, 0.3), 24))
+	dialogue_panel.add_theme_stylebox_override("panel", PixelUI.make_pixel_panel(Color(0.08, 0.09, 0.13, 0.97), Color(0.9, 0.75, 0.3), 16))
 	dialogue_panel.visible = false
 	dialogue_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	dialogue_panel.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -115,7 +115,7 @@ func _build_ui() -> void:
 	dock_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dock_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dock_margin.add_theme_constant_override("margin_top", 30)
-	dock_margin.add_theme_constant_override("margin_bottom", 8)
+	dock_margin.add_theme_constant_override("margin_bottom", 24)
 	add_child(dock_margin)
 
 	_fx_top = Control.new()
@@ -131,29 +131,29 @@ func _build_ui() -> void:
 	_guide_style = dialogue_panel.get_theme_stylebox("panel")
 
 	var hbox = HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 30)
+	hbox.add_theme_constant_override("separation", 24)
 	dialogue_panel.add_child(hbox)
 
 	portrait = GuideFaceControl.new()
-	portrait.setup(150.0)
+	portrait.setup(112.0)
 	hbox.add_child(portrait)
 
 	var text_vbox = VBoxContainer.new()
-	text_vbox.custom_minimum_size = Vector2(1000, 0)
-	text_vbox.add_theme_constant_override("separation", 14)
+	text_vbox.custom_minimum_size = Vector2(1060, 0)
+	text_vbox.add_theme_constant_override("separation", 8)
 	hbox.add_child(text_vbox)
 
 	name_label = Label.new()
 	name_label.text = "O GUIA"
-	name_label.add_theme_font_size_override("font_size", 24)
+	name_label.add_theme_font_size_override("font_size", 22)
 	name_label.add_theme_color_override("font_color", Color(0.9, 0.75, 0.3))
 	text_vbox.add_child(name_label)
 
 	text_label = Label.new()
 	text_label.text = ""
 	text_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	text_label.custom_minimum_size = Vector2(1000, 84)
-	text_label.add_theme_font_size_override("font_size", 30)
+	text_label.custom_minimum_size = Vector2(1060, 72)
+	text_label.add_theme_font_size_override("font_size", 26)
 	text_label.add_theme_color_override("font_color", Color(0.95, 0.95, 0.97))
 	text_vbox.add_child(text_label)
 
@@ -163,7 +163,7 @@ func _build_ui() -> void:
 
 	continue_btn = Button.new()
 	continue_btn.text = "CONTINUAR"
-	continue_btn.custom_minimum_size = Vector2(220, 56)
+	continue_btn.custom_minimum_size = Vector2(220, 48)
 	continue_btn.add_theme_font_size_override("font_size", 22)
 	PixelUI.skin_button(continue_btn, Color(0.4, 0.85, 0.45), "", "icone_confirmar")
 	continue_btn.pressed.connect(_on_continue_pressed)
@@ -171,7 +171,7 @@ func _build_ui() -> void:
 
 	skip_btn = Button.new()
 	skip_btn.text = "PULAR"
-	skip_btn.custom_minimum_size = Vector2(160, 56)
+	skip_btn.custom_minimum_size = Vector2(160, 48)
 	skip_btn.add_theme_font_size_override("font_size", 22)
 	PixelUI.skin_button(skip_btn, Color(0.6, 0.6, 0.65))
 	skip_btn.pressed.connect(_on_skip_pressed)

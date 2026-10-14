@@ -165,22 +165,22 @@ static func make_bevel_card(base_color: Color, border_color: Color, is_pressed_o
 
 	return style
 
-static func make_coin_icon(size_px: float = 22.0) -> Control:
+# Moeda de ouro: usa o sprite do ícone de dinheiro da HUD (16x16), ampliado em
+# escala inteira (nearest) para o tamanho pedido, centralizado num Control.
+static func make_coin_icon(size_px: float = 32.0) -> Control:
+	var k: int = maxi(1, int(round(size_px / 16.0)))
+	var px: float = 16.0 * float(k)
 	var coin_ctrl = Control.new()
-	coin_ctrl.custom_minimum_size = Vector2(size_px, size_px)
-	coin_ctrl.pivot_offset = Vector2(size_px, size_px) / 2.0
-
-	var draw_node = Node2D.new()
-	draw_node.draw.connect(func():
-		var center = Vector2(size_px, size_px) / 2.0
-		var r = size_px * 0.40
-		draw_node.draw_circle(center + Vector2(1, 2), r, Color(0.0, 0.0, 0.0, 0.35))
-		draw_node.draw_circle(center, r, Color(0.45, 0.32, 0.08))
-		draw_node.draw_circle(center, r * 0.82, Color(1.0, 0.84, 0.2))
-		draw_node.draw_circle(center - Vector2(r * 0.25, r * 0.25), r * 0.35, Color(1.0, 0.95, 0.6, 0.9))
-		draw_node.draw_rect(Rect2(center.x - 2, center.y - 2, 4, 4), Color(0.85, 0.65, 0.15))
-	)
-	coin_ctrl.add_child(draw_node)
+	coin_ctrl.custom_minimum_size = Vector2(px, px)
+	coin_ctrl.pivot_offset = Vector2(px, px) / 2.0
+	var icon = TextureRect.new()
+	icon.texture = hud_texture("icone_dinheiro", 1)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_SCALE
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	coin_ctrl.add_child(icon)
 	return coin_ctrl
 
 # ---------------------------------------------------------------------------

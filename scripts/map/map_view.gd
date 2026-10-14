@@ -29,6 +29,7 @@ var node_size_labels: Dictionary = {}
 var lines_dictionary: Dictionary = {}
 
 var forest: ForestBackground
+var island_base: IslandBase
 var player_pawn: MapPlayerPawn
 # Nó onde o peão está parado. Parado, o peão NÃO é desenhado à parte: ele já
 # vem "assado" no próprio sprite do soquete (ver _socket_with_pawn), então
@@ -43,6 +44,9 @@ var hud_bar: HUDBar
 func _ready() -> void:
 	randomize()
 	z_index = 0
+	var sky := SpaceBackground.new()   # céu estrelado atrás do mapa
+	sky.floater_alpha = 0.55           # ilhas/peças discretas (há texto por cima)
+	add_child(sky)
 	_setup_map_ui()
 	_setup_player_pawn()
 
@@ -149,6 +153,12 @@ func _build_forest(layers: Array[Array]) -> void:
 	add_child(forest)
 	move_child(forest, 0)
 	forest.build(layers, TILE_SIZE, MAP_SPRITE_SCALE, -half, half, min_r - 2, max_r + 2)
+	# Base rochosa: o mapa é uma ilha flutuando no espaço (atrás do tabuleiro).
+	island_base = IslandBase.new()
+	island_base.name = "IslandBase"
+	add_child(island_base)
+	move_child(island_base, 0)
+	island_base.build(forest.world_rect, MAP_SPRITE_SCALE, camera)
 
 func _draw_lines(layers: Array[Array]) -> void:
 	for layer in layers:
@@ -386,6 +396,8 @@ func _camera_target_y(target_y: float) -> float:
 		return target_y
 	var half_h = get_viewport_rect().size.y / (2.0 * CAMERA_ZOOM)
 	var r = forest.world_rect
+	if island_base != null:
+		r.size.y += island_base.extra_height()   # deixa a base rochosa à vista
 	if r.size.y <= half_h * 2.0:
 		return r.get_center().y
 	return clampf(target_y, r.position.y + half_h, r.end.y - half_h)
