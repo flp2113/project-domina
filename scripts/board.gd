@@ -36,6 +36,14 @@ var _protected_attacker_team: int = 0
 # Casas bloqueadas (Fortificar): Vector2i(col, row) -> turnos restantes.
 var scorched_tiles: Dictionary = {}
 
+# Casas em chamas (Terra Queimada): Vector2i(col, row) -> turnos restantes.
+# Diferente de scorched_tiles (que BLOQUEIA a casa), aqui a casa é livre para
+# andar, mas qualquer peça que POUSE nela é destruída.
+var fire_tiles: Dictionary = {}
+
+# Dama Voadora: peça que ainda pode fazer um 2º movimento neste turno.
+var extra_move_piece: BoardPiece = null
+
 # Time que, ENQUANTO durar, pode andar 2 casas (caminho livre) além do passo
 # normal — usado pela Noite da Coruja. 0 = ninguém.
 var night_boost_team: int = 0
@@ -95,6 +103,8 @@ func clear_board() -> void:
 		for c in range(cols):
 			grid[r][c] = EMPTY
 	scorched_tiles.clear()
+	fire_tiles.clear()
+	extra_move_piece = null
 	bonus_moves.clear()
 	night_boost_team = 0
 
@@ -113,6 +123,28 @@ func tick_scorched_tiles() -> void:
 		scorched_tiles[pos] -= 1
 		if scorched_tiles[pos] <= 0:
 			scorched_tiles.erase(pos)
+	for pos in fire_tiles.keys():
+		fire_tiles[pos] -= 1
+		if fire_tiles[pos] <= 0:
+			fire_tiles.erase(pos)
+
+# Chamado ao fim do turno de `team`: desconta os efeitos temporários DAS PEÇAS
+# DELE (Emboscada, Herdeiro). Devolve eventos [{"type", "pos"}] pra a UI avisar.
+func tick_piece_effects(team: int) -> Array:
+	var events: Array = []
+	for r in range(rows):
+		for c in range(cols):
+			var p: BoardPiece = grid[r][c]
+			if p == EMPTY or p.owner_team != team:
+				continue
+			if p.rooted_turns > 0:
+				p.rooted_turns -= 1
+			if p.temp_king_turns > 0:
+				p.temp_king_turns -= 1
+				if p.temp_king_turns == 0:
+					p.is_king = false
+					events.append({"type": "heir_expired", "pos": Vector2i(c, r)})
+	return events
 
 func get_max_deployment_rows() -> int:
 	var total_rows = rows
@@ -182,6 +214,9 @@ func get_piece_captures(r: int, c: int) -> Array:
 	var captures: Array = []
 	var piece_obj: BoardPiece = grid[r][c]
 	if piece_obj == EMPTY:
+		return captures
+
+	if piece_obj.rooted_turns > 0:
 		return captures
 
 	var is_king: bool = piece_obj.is_king
@@ -301,6 +336,9 @@ func get_piece_moves(r: int, c: int) -> Array:
 	var moves: Array = []
 	var piece_obj: BoardPiece = grid[r][c]
 	if piece_obj == EMPTY:
+		return moves
+
+	if piece_obj.rooted_turns > 0:
 		return moves
 
 	var is_king: bool = piece_obj.is_king
@@ -474,6 +512,18 @@ func make_move(move_dict: Dictionary) -> bool:
 				"to": to_pos
 			}, self)
 
+	# Terra Queimada: quem POUSA numa casa em chamas é destruído.
+	if fire_tiles.has(to_pos):
+		grid[to_pos.y][to_pos.x] = EMPTY
+		piece_destroyed.emit(to_pos, piece)
+		return false
+
+	# Herdeiro que chega ao fim do tabuleiro vira Dama de verdade.
+	if piece.is_king and piece.temp_king_turns > 0:
+		var end_row = 0 if piece.owner_team == human_team_color else rows - 1
+		if to_pos.y == end_row:
+			piece.temp_king_turns = 0
+
 	var promoted = false
 	if not piece.is_king:
 		var target_promotion_row = 0 if (piece.owner_team == human_team_color) else (rows - 1)
@@ -527,6 +577,7 @@ func clone() -> Board:
 	new_b.rule_pipeline = rule_pipeline
 	new_b.is_simulation = true
 	new_b.scorched_tiles = scorched_tiles.duplicate()
+	new_b.fire_tiles = fire_tiles.duplicate()
 	new_b.bonus_moves = bonus_moves.duplicate(true)
 	new_b.night_boost_team = night_boost_team
 

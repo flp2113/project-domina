@@ -62,16 +62,24 @@ func get_enemy_random_rule_count() -> int:
 func get_enemy_card_count() -> int:
 	return 2
 
+# Recompensa em ouro (economia: duelo comum ~7-14, elite ~13-22): base fixa +
+# capturas (com teto) + peças vivas (1 de ouro a cada 3, com teto).
+const CAPTURE_GOLD_CAP: int = 4
+const SURVIVAL_GOLD_CAP: int = 4
+
 func get_base_gold() -> int:
-	return 5
+	return 6
 
 func get_capture_gold() -> int:
-	return captures_by_player
+	return mini(captures_by_player, CAPTURE_GOLD_CAP)
+
+func get_survival_gold(alive: int) -> int:
+	return mini(int(ceil(float(alive) / 3.0)), SURVIVAL_GOLD_CAP)
 
 func calculate_reward_gold() -> Dictionary:
 	var base_gold = get_base_gold()
 	var capture_gold = get_capture_gold()
-	var surviving_pieces = board.count_pieces(human_team)
+	var surviving_pieces = get_survival_gold(board.count_pieces(human_team))
 
 	var total = base_gold + capture_gold + surviving_pieces
 

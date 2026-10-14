@@ -50,6 +50,8 @@ func _draw() -> void:
 		draw_rect(tile_rect, Color(1.0, 0.3, 0.05, 0.5))
 		PixelRenderer.draw_pixel_corners(self, tile_rect, Color(1.0, 0.75, 0.1, 0.95), 8.0, 2.5)
 
+	_draw_fire_tiles(board, board_offset, cell_size)
+
 	if board.rule_pipeline != null and (board.rule_pipeline.has_rule("sacred_zone") or board.rule_pipeline.has_rule("power_center")):
 		var center_color = Color(0.85, 0.55, 1.0, 0.4) if board.rule_pipeline.has_rule("sacred_zone") else Color(1.0, 0.85, 0.3, 0.4)
 		var center_border = Color(0.9, 0.6, 1.0, 0.9) if board.rule_pipeline.has_rule("sacred_zone") else Color(1.0, 0.9, 0.4, 0.9)
@@ -150,8 +152,48 @@ func _draw() -> void:
 				var center = board_offset + Vector2(c * cell_size + cell_size / 2.0, r * cell_size + cell_size / 2.0)
 				var scale_factor = host.piece_spawn_scales.get(pos, 1.0)
 				PixelRenderer.draw_piece(self, piece_obj, center, cell_size, scale_factor)
+				_draw_piece_status(piece_obj, center, cell_size * scale_factor)
 
 	_draw_night_and_status(board, board_offset, cell_size)
+
+# Terra Queimada: chamas animadas sobre as casas em fogo.
+func _draw_fire_tiles(board: Board, board_offset: Vector2, cell_size: float) -> void:
+	var t = Time.get_ticks_msec() / 1000.0
+	for pos in board.fire_tiles.keys():
+		var rect = Rect2(board_offset.x + pos.x * cell_size, board_offset.y + pos.y * cell_size, cell_size, cell_size)
+		draw_rect(rect, Color(0.75, 0.15, 0.08, 0.38 + 0.08 * sin(t * 6.0 + pos.x + pos.y)))
+		for k in range(3):
+			var ph = t * 5.0 + k * 2.1 + pos.x * 1.3 + pos.y * 0.7
+			var h = cell_size * (0.34 + 0.12 * sin(ph))
+			var bx = rect.position.x + cell_size * (0.2 + 0.3 * k)
+			var by = rect.end.y - cell_size * 0.08
+			var w = cell_size * 0.2
+			draw_colored_polygon(PackedVector2Array([Vector2(bx, by), Vector2(bx + w, by), Vector2(bx + w * 0.5 + sin(ph * 1.3) * 3.0, by - h)]), Color(0.95, 0.45, 0.1, 0.9))
+			draw_colored_polygon(PackedVector2Array([Vector2(bx + w * 0.25, by), Vector2(bx + w * 0.75, by), Vector2(bx + w * 0.5, by - h * 0.55)]), Color(1.0, 0.85, 0.3, 0.95))
+		PixelRenderer.draw_pixel_corners(self, rect, Color(1.0, 0.55, 0.1, 0.95), 8.0, 2.5)
+
+# Marcas de status na peça: grade violeta = imobilizada (Emboscada);
+# selo dourado com número = Dama temporária (Herdeiro, turnos restantes).
+func _draw_piece_status(piece: BoardPiece, center: Vector2, size: float) -> void:
+	if piece.rooted_turns > 0:
+		var half = size * 0.34
+		var col = Color(0.62, 0.42, 0.85, 0.95)
+		for i in range(3):
+			var x = center.x - half + half * i
+			draw_line(Vector2(x, center.y - half), Vector2(x, center.y + half), col, 3.0)
+		draw_rect(Rect2(center - Vector2(half, half), Vector2(half * 2.0, half * 2.0)), col, false, 3.0)
+	if piece.temp_king_turns > 0:
+		var badge = center + Vector2(size * 0.3, -size * 0.3)
+		draw_circle(badge, size * 0.15, Color(0.14, 0.1, 0.17))
+		draw_arc(badge, size * 0.15, 0, TAU, 16, Color(0.85, 0.65, 0.25), 2.0)
+		var font = ThemeDB.fallback_font
+		# Centraliza de verdade: caixa de largura = diâmetro do círculo, e a
+		# linha de base calculada pela altura real da fonte.
+		var fs = int(size * 0.2)
+		var txt = str(piece.temp_king_turns)
+		var r = size * 0.15
+		var base_y = badge.y + (font.get_ascent(fs) - font.get_descent(fs)) / 2.0
+		draw_string(font, Vector2(badge.x - r, base_y), txt, HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, fs, Color(1.0, 0.9, 0.5))
 
 # Escuridão da Noite da Coruja (sobre peças já desenhadas, com as peças do
 # chefe encobertas pela névoa) + texto de status acima do tabuleiro.

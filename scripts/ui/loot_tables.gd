@@ -43,7 +43,18 @@ static func get_all_action_cards() -> Array[ActionCard]:
 		CardGrandReinforcement.new(),
 		CardCoinOfDestiny.new(),
 		CardLuckyDuel.new(),
-		CardSecondChance.new()
+		CardSecondChance.new(),
+		CardRebellion.new(),
+		CardPause.new(),
+		CardRecycle.new(),
+		CardRestock.new(),
+		CardLoadedCoin.new(),
+		CardDemote.new(),
+		CardHeir.new(),
+		CardFlyingQueen.new(),
+		CardGuillotine.new(),
+		CardAmbush.new(),
+		CardScorchedEarth.new()
 	]
 	return cards
 
@@ -89,7 +100,8 @@ static func get_random_action_cards(count: int, exclude_ids: Array[String] = [])
 const AI_ELIGIBLE_CARD_IDS: Array[String] = [
 	"fortify", "grand_reinforcement", "corrupt",
 	"recruit", "rebuild", "extra_turn", "retreat", "heroic_advance",
-	"coin_of_destiny", "lucky_duel", "second_chance"
+	"coin_of_destiny", "lucky_duel", "second_chance",
+	"rebellion", "demote", "heir", "guillotine", "ambush"
 ]
 
 static func get_ai_starting_deck(count: int) -> Array[ActionCard]:

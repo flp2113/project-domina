@@ -3,6 +3,18 @@ extends Control
 
 const MAP_SCENE_PATH: String = "res://map_view.tscn"
 const GOLD_WAGER_OPTIONS: Array[int] = [10, 25, 50]
+# Equilíbrio da casa: a aposta máxima é metade do ouro (mas nunca menos que a
+# menor opção), acertar paga +80% do valor apostado (vantagem leve da casa, em
+# vez de 2x) e só dá para apostar UMA vez por visita.
+const WAGER_MAX_FRACTION: float = 0.5
+const WIN_PROFIT_RATIO: float = 0.8
+var bet_done: bool = false
+
+static func max_wager_for(gold: int) -> int:
+	return maxi(GOLD_WAGER_OPTIONS[0], int(floor(float(gold) * WAGER_MAX_FRACTION)))
+
+static func win_profit(wager: int) -> int:
+	return int(round(float(wager) * WIN_PROFIT_RATIO))
 const PREVIEW_SCALE: float = 0.95
 const COIN_RADIUS: float = 100.0
 
@@ -176,7 +188,7 @@ func _setup_ui() -> void:
 	content_box.add_child(stake_box)
 
 	var gold_stake_title = Label.new()
-	gold_stake_title.text = "ARRISCAR OURO  -  acertou o lado, ganha o dobro"
+	gold_stake_title.text = "ARRISCAR OURO  -  acerte o lado e ganhe +80%  (máx. metade do seu ouro)"
 	gold_stake_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	gold_stake_title.add_theme_font_size_override("font_size", 26)
 	gold_stake_title.add_theme_color_override("font_color", Color(0.7, 0.75, 0.8))
@@ -315,7 +327,9 @@ func _refresh_gold_label() -> void:
 func _update_stake_buttons_state() -> void:
 	var current_gold = RunManager.gold if RunManager != null else 0
 	for i in range(gold_buttons.size()):
-		gold_buttons[i].disabled = is_flipping or current_gold < GOLD_WAGER_OPTIONS[i]
+		var wager: int = GOLD_WAGER_OPTIONS[i]
+		gold_buttons[i].disabled = is_flipping or bet_done or current_gold < wager or wager > max_wager_for(current_gold)
+		gold_buttons[i].text = "%d OURO" % wager
 
 	var has_cards = RunManager != null and not RunManager.player_deck.is_empty()
 	var has_rules = RunManager != null and not RunManager.active_rules.is_empty()
@@ -419,7 +433,7 @@ func _close_picker() -> void:
 # ---------- Fluxo comum ----------
 
 func _on_gold_stake_selected(amount: int) -> void:
-	if is_flipping or RunManager == null or RunManager.gold < amount:
+	if is_flipping or bet_done or RunManager == null or RunManager.gold < amount or amount > max_wager_for(RunManager.gold):
 		return
 	current_stake_type = StakeType.GOLD
 	current_gold_wager = amount
@@ -435,7 +449,7 @@ func _show_staked_preview() -> void:
 	_clear_preview()
 	match current_stake_type:
 		StakeType.GOLD:
-			status_label.text = "Em jogo: %d de ouro." % current_gold_wager
+			status_label.text = "Em jogo: %d de ouro (acertou: +%d)." % [current_gold_wager, win_profit(current_gold_wager)]
 		StakeType.CARD:
 			status_label.text = "Em jogo:"
 			preview_hbox.add_child(_labeled_card_visual("APOSTADA", current_staked_card, Color.WHITE))
@@ -546,8 +560,9 @@ func _on_flip_completed(landed_white: bool) -> void:
 	if bet_won:
 		match current_stake_type:
 			StakeType.GOLD:
-				RunManager.add_gold(current_gold_wager)
-				status_label.text = "Acertou! Ganhou %d de ouro." % current_gold_wager
+				var profit: int = win_profit(current_gold_wager)
+				RunManager.add_gold(profit)
+				status_label.text = "Acertou! Ganhou %d de ouro." % profit
 			StakeType.CARD:
 				var new_card = _get_better_rarity_card(current_staked_card.rarity)
 				status_label.text = "Acertou! Ganhou uma carta melhor:"
@@ -606,7 +621,9 @@ func _on_flip_completed(landed_white: bool) -> void:
 	leave_btn.disabled = false
 	TutorialManager.report_event("bet_resolved")
 	call_label.visible = false
-	stake_box.visible = true
+	# Uma aposta por visita: a mesa fecha e só resta IR EMBORA.
+	bet_done = true
+	stake_box.visible = false
 	_update_stake_buttons_state()
 
 func _on_reward_law_replaced(_old: RuleCard, new_rule: RuleCard) -> void:

@@ -12,6 +12,10 @@ var color_override: Color = Color.TRANSPARENT
 # Árvore da floresta (chefe): peça neutra (owner_team = Board.NEUTRAL) que não
 # anda, bloqueia a casa e pode ser capturada por qualquer lado (opcionalmente).
 var is_tree: bool = false
+# Emboscada: turnos (do dono da peça) em que ela NÃO pode se mover/capturar.
+var rooted_turns: int = 0
+# Herdeiro: turnos (do dono) restantes como Dama temporária; 0 = Dama normal ou comum.
+var temp_king_turns: int = 0
 
 static func make_tree() -> BoardPiece:
 	var t = BoardPiece.new(Board.NEUTRAL, false)
@@ -33,4 +37,6 @@ func clone() -> BoardPiece:
 	var copy = BoardPiece.new(owner_team, is_king)
 	copy.color_override = color_override
 	copy.is_tree = is_tree
+	copy.rooted_turns = rooted_turns
+	copy.temp_king_turns = temp_king_turns
 	return copy

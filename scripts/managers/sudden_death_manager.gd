@@ -16,6 +16,8 @@ var max_turns: int = 10
 var is_active: bool = false
 var turns_left: int = 6
 var initial_kings_count: int = 0
+# Pausa: quantos fechamentos de turno ainda NÃO descontam o relógio.
+var pause_ticks: int = 0
 
 # Preenchidos pelo main: contagem visual dos pontos no fim da Morte Súbita.
 var tally_view: ScoreTallyView = null
@@ -26,6 +28,7 @@ func reset() -> void:
 	is_active = false
 	turns_left = max_turns
 	initial_kings_count = 0
+	pause_ticks = 0
 	queue_redraw()
 
 func configure(max_dim: int = 8) -> void:
@@ -67,6 +70,11 @@ func process_turn_end(board: Board, human_team: int, ai_team: int) -> bool:
 	check_conditions(board, human_team, ai_team)
 
 	if not is_active:
+		return false
+
+	if pause_ticks > 0:
+		pause_ticks -= 1
+		queue_redraw()
 		return false
 
 	turns_left -= 1
@@ -125,6 +133,8 @@ func _draw() -> void:
 
 		var font = ThemeDB.fallback_font
 		var msg = "MORTE SUBITA: %d TURNOS RESTANTES" % turns_left
+		if pause_ticks > 0:
+			msg = "MORTE SUBITA: %d TURNOS - PAUSADA" % turns_left
 		var text_pos = Vector2(banner_rect.position.x, banner_rect.position.y + 33)
 
 		draw_string(font, text_pos + Vector2(2, 2), msg, HORIZONTAL_ALIGNMENT_CENTER, banner_rect.size.x, 18, Color(0.05, 0.05, 0.05, 1.0))

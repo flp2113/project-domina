@@ -31,10 +31,16 @@ var remove_card_btn: Button
 # depois (reroll de Cartas, compras) são redesenhadas já viradas.
 var _laws_revealed: bool = false
 # Custos da Loja (sobem a cada uso): reroll de Cartas e remoção de Carta do baralho.
-const REROLL_START_COST: int = 3
-const REROLL_COST_STEP: int = 1
-const REMOVE_START_COST: int = 6
-const REMOVE_COST_STEP: int = 3
+const REROLL_START_COST: int = 4
+const REROLL_COST_STEP: int = 2
+const REMOVE_START_COST: int = 8
+const REMOVE_COST_STEP: int = 4
+func _law_price(law: RuleCard) -> int:
+	return RunManager.get_shop_price(law.cost) if RunManager != null else law.cost
+
+func _card_price(card: ActionCard) -> int:
+	return RunManager.get_shop_price(card.cost_gold) if RunManager != null else card.cost_gold
+
 var card_reroll_cost: int = REROLL_START_COST
 var remove_card_cost: int = REMOVE_START_COST
 
@@ -209,13 +215,13 @@ func _create_law_item_ui(law: RuleCard, index: int) -> Control:
 	wrapper.add_child(card_visual)
 
 	var current_gold = RunManager.gold if RunManager != null else 0
-	var can_afford = current_gold >= law.cost
+	var can_afford = current_gold >= _law_price(law)
 	var has_room = RunManager != null and RunManager.can_add_rule(law)
 
 	var buy_btn = Button.new()
 	buy_btn.custom_minimum_size = Vector2(RuleCardVisual.CARD_SIZE * SHOP_CARD_SCALE, 52)
 	# Sem espaço (limite/incompatibilidade): comprar abre a troca de Lei.
-	buy_btn.text = "%d OURO" % law.cost if has_room else "TROCAR · %d OURO" % law.cost
+	buy_btn.text = "%d OURO" % _law_price(law) if has_room else "TROCAR · %d OURO" % _law_price(law)
 	buy_btn.disabled = not can_afford
 	buy_btn.add_theme_font_size_override("font_size", 22)
 
@@ -265,11 +271,11 @@ func _create_action_card_shop_item_ui(card: ActionCard, index: int) -> Control:
 
 	var current_gold = RunManager.gold if RunManager != null else 0
 	var deck_full = RunManager != null and not RunManager.can_add_card_to_deck()
-	var can_afford = current_gold >= card.cost_gold and not deck_full
+	var can_afford = current_gold >= _card_price(card) and not deck_full
 
 	var buy_btn = Button.new()
 	buy_btn.custom_minimum_size = Vector2(ActionCardVisual.CARD_WIDTH * SHOP_ACTION_SCALE, 52)
-	buy_btn.text = "INVENTARIO CHEIO" if deck_full else "%d OURO" % card.cost_gold
+	buy_btn.text = "INVENTARIO CHEIO" if deck_full else "%d OURO" % _card_price(card)
 	buy_btn.disabled = not can_afford
 	buy_btn.add_theme_font_size_override("font_size", 22)
 
@@ -330,7 +336,7 @@ func _on_buy_law_pressed(index: int) -> void:
 		return
 
 	var law = laws_for_sale[index]
-	if RunManager == null or RunManager.gold < law.cost:
+	if RunManager == null or RunManager.gold < _law_price(law):
 		return
 	if not RunManager.can_add_rule(law):
 		# Limite de Leis: só cobra se o jogador revogar uma e a nova entrar.
@@ -339,7 +345,8 @@ func _on_buy_law_pressed(index: int) -> void:
 		return
 	# Só cobra se a Lei realmente entrar.
 	if RunManager.add_rule(law):
-		RunManager.gold -= law.cost
+		RunManager.gold -= _law_price(law)
+		RunManager.register_shop_purchase()
 		laws_for_sale.remove_at(index)
 		TutorialManager.report_event("shop_buy_law")
 	_refresh_store_state()
@@ -347,7 +354,8 @@ func _on_buy_law_pressed(index: int) -> void:
 func _on_law_replaced(_old: RuleCard, new_rule: RuleCard) -> void:
 	var idx = laws_for_sale.find(new_rule)
 	if idx >= 0:
-		RunManager.gold -= new_rule.cost
+		RunManager.gold -= _law_price(new_rule)
+		RunManager.register_shop_purchase()
 		laws_for_sale.remove_at(idx)
 	pending_law_index = -1
 	_refresh_store_state()
@@ -360,8 +368,9 @@ func _on_buy_action_card_pressed(index: int) -> void:
 
 	var card = cards_for_sale[index]
 	# Mesmo princípio: respeita o limite do inventário antes de cobrar.
-	if RunManager != null and RunManager.gold >= card.cost_gold and RunManager.add_card_to_deck(card):
-		RunManager.gold -= card.cost_gold
+	if RunManager != null and RunManager.gold >= _card_price(card) and RunManager.add_card_to_deck(card):
+		RunManager.gold -= _card_price(card)
+		RunManager.register_shop_purchase()
 		cards_for_sale.remove_at(index)
 		TutorialManager.report_event("shop_buy_card")
 	_refresh_store_state()

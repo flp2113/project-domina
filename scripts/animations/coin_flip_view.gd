@@ -30,6 +30,10 @@ var landed_white: bool = true
 # -1 = aleatório; 1 = cai branca; 0 = cai preta. O tutorial força o resultado
 # para o Duelo 1 ser sempre o mesmo (jogador de brancas, começa jogando).
 var forced_result: int = -1
+# Moeda Viciada: time cuja cor a PRÓXIMA moeda (de qualquer CoinFlipView) vai
+# mostrar; consumido ao arremessar. 0 = ninguém. Estático porque as moedas de
+# carta, de lei e de várias moedas são nós separados.
+static var rigged_team: int = 0
 var _pending_lands_white: bool = true
 
 func _roll_lands_white() -> bool:
@@ -37,6 +41,10 @@ func _roll_lands_white() -> bool:
 		return true
 	if forced_result == 0:
 		return false
+	if rigged_team != 0:
+		var rigged_white = (rigged_team == Board.WHITE)
+		rigged_team = 0
+		return rigged_white
 	return randi() % 2 == 0
 var coin_center: Vector2 = Vector2.ZERO
 var cell_size: float = 64.0

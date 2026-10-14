@@ -61,6 +61,14 @@ func _get_tile_effects(board: Board, row: int, col: int) -> Array:
 			"title_color": Color(1.0, 0.6, 0.2)
 		})
 
+	if board.fire_tiles.has(pos):
+		effects.append({
+			"title": "TERRA QUEIMADA",
+			"desc": "Em chamas por %d turno(s) — qualquer peca que POUSE aqui e destruida." % board.fire_tiles[pos],
+			"affects": "both",
+			"title_color": Color(1.0, 0.5, 0.15)
+		})
+
 	if board.is_center_tile(row, col) and board.rule_pipeline != null:
 		if board.rule_pipeline.has_rule("sacred_zone"):
 			effects.append({

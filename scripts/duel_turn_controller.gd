@@ -45,6 +45,7 @@ func start_match_flow() -> void:
 	_host.game_over_modal.visible = false
 	_host.update_gold_display()
 	_host.board.clear_bonus_moves()
+	CoinFlipView.rigged_team = 0
 
 	ai_deck_mgr = CardDeckManager.new()
 	ai_deck_mgr.setup_duel(_host._ai_starting_cards)
@@ -273,6 +274,18 @@ func handle_cell_click(pos: Vector2i) -> void:
 					if r.try_consume_extra_step():
 						used_extra_step = true
 						break
+
+			# Dama Voadora: a mesma Dama faz uma 2ª jogada neste turno.
+			var fly_piece: BoardPiece = board.extra_move_piece
+			board.extra_move_piece = null
+			if not used_extra_step and fly_piece != null and fly_piece == moving_piece and fly_piece.is_king and board.grid[pos.y][pos.x] == fly_piece:
+				var second_moves = board.get_all_valid_moves(host.human_team).filter(func(mv): return mv["from"] == pos)
+				if not second_moves.is_empty():
+					host.multi_jump_tile = pos
+					host.selected_tile = pos
+					host.valid_moves_for_selected = second_moves
+					host.rule_banner_view.pop_rule_trigger(to_center, "MOVA DE NOVO!", Color(0.5, 0.85, 1.0))
+					return
 
 			if used_extra_step:
 				host.rule_banner_view.pop_rule_trigger(to_center, "PASSO EXTRA!", Color(0.4, 0.9, 0.5))
@@ -511,6 +524,29 @@ func _find_ai_card_target(card: ActionCard, board: Board, host: Node2D) -> Varia
 			return _ai_find_isolated_enemy_target(board, host.ai_team)
 		"second_chance":
 			return Vector2i.ZERO
+		"rebellion":
+			return _ai_find_isolated_enemy_target(board, host.ai_team)
+		"demote", "guillotine":
+			return _ai_find_enemy_king_target(card, board, host)
+		"heir":
+			return _ai_find_any_own_common_piece(board, host.ai_team)
+		"ambush":
+			return _ai_find_ambush_target(card, board, host)
+	return null
+
+# Rebaixar/Guilhotina: uma Dama inimiga (do jogador), qualquer uma.
+func _ai_find_enemy_king_target(card: ActionCard, board: Board, host: Node2D) -> Variant:
+	for r in range(board.rows):
+		for c in range(board.cols):
+			if card.is_valid_target(board, Vector2i(c, r), host.ai_team, {}):
+				return Vector2i(c, r)
+	return null
+
+# Emboscada: imobiliza uma peça do jogador que teria uma captura agora.
+func _ai_find_ambush_target(card: ActionCard, board: Board, host: Node2D) -> Variant:
+	for m in board.get_all_valid_moves(host.human_team):
+		if m.get("is_capture", false) and card.is_valid_target(board, m["from"], host.ai_team, {}):
+			return m["from"]
 	return null
 
 # Fortificar: bloqueia uma casa que o jogador poderia usar no próximo turno.
@@ -671,6 +707,16 @@ func end_turn() -> void:
 # carta, jogador ou IA, em vez de só existir pro caminho do jogador.
 func _conclude_turn(team_that_moved: int) -> void:
 	var host = _host
+	host.board.extra_move_piece = null
+
+	# Efeitos temporários das peças de quem acabou de jogar (Emboscada, Herdeiro).
+	for ev in host.board.tick_piece_effects(team_that_moved):
+		if ev["type"] == "heir_expired" and host.rule_banner_view != null:
+			var hp: Vector2i = ev["pos"]
+			host.rule_banner_view.pop_rule_trigger(
+				host.board_offset + Vector2(hp.x * host.cell_size + host.cell_size / 2.0, hp.y * host.cell_size + host.cell_size / 2.0),
+				"COROA PERDIDA", Color(0.8, 0.7, 0.9))
+
 	if await check_game_over():
 		return
 
@@ -706,6 +752,7 @@ func _conclude_turn(team_that_moved: int) -> void:
 func trigger_game_over(won: bool, rewards: Dictionary = {}, custom_title: String = "", defeat_message: String = "") -> void:
 	var host = _host
 	host.is_game_over = true
+	CoinFlipView.rigged_team = 0
 	host.selected_tile = Vector2i(-1, -1)
 	host.valid_moves_for_selected = []
 	host.action_cards.cancel_selection()

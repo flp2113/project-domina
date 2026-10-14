@@ -4,6 +4,21 @@ var current_board_size: Vector2i = Vector2i(8, 8)
 var current_node_type: int = 1
 var gold: int = 0
 
+# Inflação da Loja: cada Lei/Carta comprada na run encarece as próximas em 6%
+# (até 8 compras). Fora do tutorial. Reroll/remoção têm escalada própria.
+const PRICE_INFLATION_STEP: float = 0.06
+const PRICE_INFLATION_MAX_PURCHASES: int = 8
+var shop_purchases: int = 0
+
+func get_shop_price(base_cost: int) -> int:
+	if TutorialManager != null and TutorialManager.is_active:
+		return base_cost
+	var n: int = mini(shop_purchases, PRICE_INFLATION_MAX_PURCHASES)
+	return int(round(float(base_cost) * (1.0 + PRICE_INFLATION_STEP * float(n))))
+
+func register_shop_purchase() -> void:
+	shop_purchases += 1
+
 var map_data: Array[Array] = []
 var current_node: MapNode = null
 var visited_connections: Array[String] = []
@@ -57,6 +72,7 @@ func remove_rule(rule_id: String) -> void:
 
 func start_new_run():
 	gold = 10000
+	shop_purchases = 0
 	current_board_size = Vector2i(8, 8)
 	current_node_type = 1
 	map_data = []
@@ -67,8 +83,18 @@ func start_new_run():
 	_init_default_deck()
 	
 
+# DEBUG: começa cada run com UMA cópia de todas as Cartas de Ação do jogo no
+# inventário (para testar). Ponha false para voltar ao baralho inicial normal.
+# Cartas novas entram sozinhas, pois vêm de LootTables.get_all_action_cards().
+const DEBUG_ALL_CARDS: bool = true
+
 func _init_default_deck() -> void:
 	player_deck.clear()
+	if DEBUG_ALL_CARDS:
+		for card in LootTables.get_all_action_cards():
+			# Debug ignora o limite de 20: já são mais cartas do que isso.
+			player_deck.append(card)
+		return
 	player_deck.append(CardSecondChance.new())
 	player_deck.append(CardLuckyDuel.new())
 	player_deck.append(CardCoinOfDestiny.new())

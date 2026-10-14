@@ -119,11 +119,11 @@ static func get_category_slug(cat: int) -> String:
 # Leis valem mais que Cartas da mesma raridade: ficam ativas na run inteira.
 static func get_cost_by_rarity(r: Rarity) -> int:
 	match r:
-		Rarity.COMMON:    return 12
-		Rarity.RARE:      return 18
-		Rarity.EPIC:      return 26
-		Rarity.LEGENDARY: return 38
-	return 12
+		Rarity.COMMON:    return 25
+		Rarity.RARE:      return 32
+		Rarity.EPIC:      return 40
+		Rarity.LEGENDARY: return 50
+	return 25
 
 static func get_rarity_weight(r: Rarity) -> int:
 	match r:

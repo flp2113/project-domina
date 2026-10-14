@@ -9,10 +9,13 @@ func apply_board_modifiers() -> void:
 	pass
 
 func get_base_gold() -> int:
-	return 10
+	return 12
 
 func get_capture_gold() -> int:
-	return captures_by_player * 2
+	return mini(captures_by_player, CAPTURE_GOLD_CAP + 1)
+
+func get_survival_gold(alive: int) -> int:
+	return mini(int(ceil(float(alive) / 3.0)), SURVIVAL_GOLD_CAP + 1)
 
 func get_enemy_fixed_rules() -> Array[RuleCard]:
 	var rules: Array[RuleCard] = [RuleIronCrown.new()]

@@ -145,8 +145,16 @@ func _execute_selected_card(pos: Vector2i) -> void:
 	# só aplicam a consequência no tabuleiro DEPOIS da moeda visualmente
 	# cair — sem esperar aqui, a carta seria descartada e a mão
 	# atualizada antes da animação sequer começar.
+	var played_card: ActionCard = selected_action_card
 	await selected_action_card.execute(_host.board, pos, _host.human_team, _build_context())
 	TutorialManager.report_event("card_used")
+
+	# Cartas que mexem na mão (Reabastecer, Reciclar) mudam os índices: acha a
+	# carta jogada pela identidade em vez de confiar no índice de antes.
+	if card_deck_mgr != null:
+		var real_idx = card_deck_mgr.hand.find(played_card)
+		if real_idx >= 0:
+			selected_action_card_idx = real_idx
 
 	# Descarta a carta da mão e a envia permanentemente para o descarte deste duelo
 	if card_deck_mgr != null and selected_action_card_idx >= 0:

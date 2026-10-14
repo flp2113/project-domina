@@ -12,7 +12,7 @@ const PAWN_SPRITE_PX: float = 32.0
 const FOREST_MARGIN_COLS: int = 2
 
 const TILES_PER_LAYER: int = 5
-const TILES_BETWEEN_NODES: int = 2
+const TILES_BETWEEN_NODES: int = 3
 
 @export_group("Linhas")
 @export var default_line_color: Color = Color(0.3, 0.35, 0.45, 0.7)
@@ -124,11 +124,16 @@ func _position_nodes(layers: Array[Array]) -> void:
 		var total_nodes = layer.size()
 		var grid_row = -layer_index * TILES_PER_LAYER
 		var start_col = -int((total_nodes - 1) * TILES_BETWEEN_NODES / 2.0)
-		
+		# Espalha melhor: camadas mais estreitas que o máximo deslizam 1 casa
+		# para a esquerda/direita (começo e chefe ficam no centro), então o mapa
+		# não vira uma coluna simétrica.
+		if total_nodes > 1 and total_nodes < 4:
+			start_col += [-1, 0, 1].pick_random()
+
 		for node_index in range(total_nodes):
 			var node: MapNode = layer[node_index]
 			var grid_col = start_col + (node_index * TILES_BETWEEN_NODES)
-			
+
 			if (grid_row + grid_col) % 2 == 0:
 				grid_col += 1
 
@@ -152,7 +157,11 @@ func _build_forest(layers: Array[Array]) -> void:
 	forest.name = "ForestBackground"
 	add_child(forest)
 	move_child(forest, 0)
-	forest.build(layers, TILE_SIZE, MAP_SPRITE_SCALE, -half, half, min_r - 2, max_r + 2)
+	# Uma coluna a menos na largura (só do lado direito); a câmera acompanha o
+	# centro do tabuleiro para ele continuar centralizado na tela.
+	forest.build(layers, TILE_SIZE, MAP_SPRITE_SCALE, -half, half - 1, min_r - 2, max_r + 2)
+	if camera != null:
+		camera.position.x = forest.world_rect.get_center().x
 	# Base rochosa: o mapa é uma ilha flutuando no espaço (atrás do tabuleiro).
 	island_base = IslandBase.new()
 	island_base.name = "IslandBase"

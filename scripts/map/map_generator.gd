@@ -1,9 +1,29 @@
 class_name MapGenerator
 extends Node
 
-@export var layers_count: int = 5
-@export var max_nodes_per_layer: int = 3
+# Mapa de 8 camadas: 0 = começo, 1..6 = intermediárias, 7 = chefe. Cada camada
+# intermediária tem um "papel" fixo (ver LAYER_ROLES): garante o que não pode
+# faltar (Loja antes do chefe, um duelo forte no meio) e sorteia o resto com
+# pesos. Evento é a casa "?" (ainda sem conteúdo: por ora só se passa por ela);
+# Melhoria continua fora do mapa até existir.
+@export var layers_count: int = 8
+@export var max_nodes_per_layer: int = 4
 @export var min_nodes_per_layer: int = 2
+
+# "must": tipos garantidos (1 nó cada, em posição aleatória). "fill": pesos do
+# resto. "caps": máximo de nós de um tipo na camada (por padrão só Loja/Aposta: 1).
+# "max_nodes": teto de largura da camada (a antes do chefe é mais estreita).
+const LAYER_ROLES: Dictionary = {
+	1: {"must": [], "fill": {MapNode.NodeType.Duelo: 65, MapNode.NodeType.Evento: 35}},
+	2: {"must": [MapNode.NodeType.Evento], "fill": {MapNode.NodeType.Duelo: 55, MapNode.NodeType.Aposta: 25, MapNode.NodeType.Evento: 20}},
+	3: {"must": [MapNode.NodeType.Loja], "fill": {MapNode.NodeType.Duelo: 50, MapNode.NodeType.Evento: 50}},
+	4: {"must": [MapNode.NodeType.DueloForte], "fill": {MapNode.NodeType.Duelo: 40, MapNode.NodeType.Evento: 35, MapNode.NodeType.Aposta: 25}},
+	5: {"must": [MapNode.NodeType.Evento], "fill": {MapNode.NodeType.Duelo: 40, MapNode.NodeType.DueloForte: 20, MapNode.NodeType.Evento: 25, MapNode.NodeType.Aposta: 15}},
+	6: {"must": [MapNode.NodeType.Loja], "fill": {MapNode.NodeType.Duelo: 40, MapNode.NodeType.DueloForte: 35, MapNode.NodeType.Evento: 25}, "max_nodes": 3},
+}
+# Largura sorteada das camadas intermediárias (nº de nós: peso).
+const WIDTH_WEIGHTS: Dictionary = {2: 30, 3: 45, 4: 25}
+const SINGLE_PER_LAYER: Array = [MapNode.NodeType.Loja, MapNode.NodeType.Aposta]
 
 # Lista com tabuleiros quadrados e retangulares: Vector2i(Linhas, Colunas)
 const POSSIBLE_BOARD_SIZES: Array[Vector2i] = [
@@ -18,53 +38,75 @@ const POSSIBLE_BOARD_SIZES: Array[Vector2i] = [
 
 func generate_map() -> Array[Array]:
 	var layers: Array[Array] = []
-	
-	# 1. Criar os nós por camada
+
 	for layer_index in range(layers_count):
 		var current_layer: Array[MapNode] = []
-		var nodes_in_this_layer = 1
-		
-		if layer_index > 0 and layer_index < layers_count - 1:
-			nodes_in_this_layer = randi_range(min_nodes_per_layer, max_nodes_per_layer)
-			
-		for node_index in range(nodes_in_this_layer):
-			var node = MapNode.new()
-			node.id = Vector2i(layer_index, node_index)
-			_assign_type(node, layer_index)
-			current_layer.append(node)
-			
+		if layer_index == 0 or layer_index == layers_count - 1:
+			current_layer.append(_make_node(layer_index, 0, _edge_type(layer_index)))
+		else:
+			var types = _roll_layer_types(layer_index)
+			for node_index in range(types.size()):
+				current_layer.append(_make_node(layer_index, node_index, types[node_index]))
 		layers.append(current_layer)
-		
-	# 2. Conectar as camadas
+
 	_connect_layers(layers)
-	
 	return layers
 
-func _assign_type(node: MapNode, layer: int) -> void:
-	if layer == 0:
-		node.type = MapNode.NodeType.Começo
-		node.board_size = Vector2i(8, 8)
-	elif layer == layers_count - 1:
-		node.type = MapNode.NodeType.Chefe
-		node.board_size = Vector2i(10, 10) # Chefe em tabuleiro maior
-	elif layer == 8:
-		node.type = MapNode.NodeType.Melhoria
-	else:
-		var roll = randf()
-		if roll < 0.45:
-			node.type = MapNode.NodeType.Duelo
-		elif roll < 0.65:
-			node.type = MapNode.NodeType.Evento
-		elif roll < 0.80:
-			node.type = MapNode.NodeType.Loja
-		elif roll < 0.92:
-			node.type = MapNode.NodeType.DueloForte
-		else:
-			node.type = MapNode.NodeType.Aposta
+func _edge_type(layer: int) -> int:
+	return MapNode.NodeType.Começo if layer == 0 else MapNode.NodeType.Chefe
 
-	# Sorteia qualquer formato retangular ou quadrado da lista para os combates
-	if node.type in [MapNode.NodeType.Duelo, MapNode.NodeType.DueloForte]:
-		node.board_size = POSSIBLE_BOARD_SIZES.pick_random()
+func _make_node(layer: int, index: int, type: int) -> MapNode:
+	var node = MapNode.new()
+	node.id = Vector2i(layer, index)
+	node.type = type
+	match type:
+		MapNode.NodeType.Começo:
+			node.board_size = Vector2i(8, 8)
+		MapNode.NodeType.Chefe:
+			node.board_size = Vector2i(10, 10)   # chefe em tabuleiro maior
+		MapNode.NodeType.Duelo, MapNode.NodeType.DueloForte:
+			node.board_size = POSSIBLE_BOARD_SIZES.pick_random()
+	return node
+
+# Sorteia os tipos de uma camada intermediária seguindo LAYER_ROLES.
+func _roll_layer_types(layer: int) -> Array:
+	var role: Dictionary = LAYER_ROLES.get(layer, {"must": [], "fill": {MapNode.NodeType.Duelo: 100}})
+	var must: Array = role["must"]
+	var width: int = _roll_width(mini(int(role.get("max_nodes", max_nodes_per_layer)), max_nodes_per_layer))
+	width = maxi(width, must.size())
+	var types: Array = must.duplicate()
+	var fill: Dictionary = role["fill"]
+	while types.size() < width:
+		var t: int = _pick_weighted(fill)
+		# Loja/Aposta: no máximo uma por camada (senão troca por duelo).
+		if t in SINGLE_PER_LAYER and types.has(t):
+			t = MapNode.NodeType.Duelo
+		types.append(t)
+	# Garante ao menos um nó de combate comum para o caminho "seguro".
+	if not types.has(MapNode.NodeType.Duelo) and not types.has(MapNode.NodeType.DueloForte):
+		types[types.size() - 1] = MapNode.NodeType.Duelo
+	types.shuffle()
+	return types
+
+func _roll_width(max_w: int) -> int:
+	var pool: Dictionary = {}
+	for w in WIDTH_WEIGHTS:
+		if w >= min_nodes_per_layer and w <= max_w:
+			pool[w] = WIDTH_WEIGHTS[w]
+	if pool.is_empty():
+		return min_nodes_per_layer
+	return _pick_weighted(pool)
+
+func _pick_weighted(weights: Dictionary) -> int:
+	var total: float = 0.0
+	for k in weights:
+		total += float(weights[k])
+	var roll: float = randf() * total
+	for k in weights:
+		roll -= float(weights[k])
+		if roll <= 0.0:
+			return k
+	return weights.keys()[0]
 
 func _connect_layers(layers: Array[Array]) -> void:
 	for i in range(layers.size() - 1):

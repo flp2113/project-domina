@@ -36,10 +36,10 @@ var _cost_gold: int = 4
 
 static func get_cost_by_rarity(r: Rarity) -> int:
 	match r:
-		Rarity.COMMON:    return 10
-		Rarity.RARE:      return 15
-		Rarity.EPIC:      return 20
-		Rarity.LEGENDARY: return 30
+		Rarity.COMMON:    return 15
+		Rarity.RARE:      return 20
+		Rarity.EPIC:      return 25
+		Rarity.LEGENDARY: return 35
 	return 4
 
 func can_play(_board: Board, _human_team: int, _context: Dictionary = {}) -> bool:
@@ -67,6 +67,19 @@ func is_valid_target(board: Board, target_pos: Vector2i, human_team: int, _conte
 
 func execute(_board: Board, _target_pos: Vector2i, _human_team: int, _context: Dictionary = {}) -> void:
 	pass
+
+# Aviso flutuante sobre o tabuleiro (reusa o RuleBannerView do host). Sem host
+# (testes/simulação) simplesmente não faz nada.
+func _pop_banner(context: Dictionary, text: String, color: Color, cell: Vector2i = Vector2i(-1, -1)) -> void:
+	var main_node = context.get("main")
+	if main_node == null or not ("rule_banner_view" in main_node) or main_node.rule_banner_view == null:
+		return
+	var at: Vector2
+	if cell.x >= 0:
+		at = main_node.board_offset + Vector2(cell.x * main_node.cell_size + main_node.cell_size / 2.0, cell.y * main_node.cell_size + main_node.cell_size / 2.0)
+	else:
+		at = main_node.board_offset + Vector2(main_node.board.cols * main_node.cell_size / 2.0, main_node.board.rows * main_node.cell_size / 2.0)
+	main_node.rule_banner_view.pop_rule_trigger(at, text, color)
 
 static func get_rarity_weight(r: Rarity) -> int:
 	match r:
