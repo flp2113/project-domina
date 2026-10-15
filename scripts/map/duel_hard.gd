@@ -19,6 +19,9 @@ func get_survival_gold(alive: int) -> int:
 
 func get_enemy_fixed_rules() -> Array[RuleCard]:
 	var rules: Array[RuleCard] = [RuleIronCrown.new()]
+	# + 1 Lei exclusiva de inimigo, sorteada (Guarda Real / Contra-Ataque / Veneno).
+	var unique: Array[RuleCard] = LootTables.get_enemy_unique_rules()
+	rules.append(unique[randi() % unique.size()])
 	return rules
 
 func get_enemy_random_rule_count() -> int:

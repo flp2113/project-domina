@@ -61,6 +61,24 @@ func setup(host: Node2D, hud_bar: HUDBar) -> void:
 func _build_context() -> Dictionary:
 	return {"main": _host, "deck_mgr": card_deck_mgr}
 
+# Lei do Eco: a primeira carta de cada duelo (qualquer raridade) volta pra mão.
+func _maybe_apply_echo(card: ActionCard) -> void:
+	var board: Board = _host.board
+	if board == null or board.rule_pipeline == null or card_deck_mgr == null:
+		return
+	var echo = board.rule_pipeline.get_rule("echo")
+	if echo == null or not echo.try_consume_echo():
+		return
+	if card_deck_mgr.hand.size() >= CardDeckManager.MAX_HAND_SIZE:
+		return
+	card_deck_mgr.discard_pile.erase(card)
+	card_deck_mgr.hand.append(card)
+	card_deck_mgr.hand_updated.emit()
+	if _host.rule_banner_view != null:
+		_host.rule_banner_view.pop_rule_trigger(
+			_host.board_offset + Vector2(board.cols * _host.cell_size / 2.0, board.rows * _host.cell_size / 2.0),
+			"ECO!", Color(0.6, 0.8, 1.0))
+
 func has_selected_card() -> bool:
 	return selected_action_card != null
 
@@ -159,6 +177,7 @@ func _execute_selected_card(pos: Vector2i) -> void:
 	# Descarta a carta da mão e a envia permanentemente para o descarte deste duelo
 	if card_deck_mgr != null and selected_action_card_idx >= 0:
 		card_deck_mgr.play_card_at(selected_action_card_idx)
+		_maybe_apply_echo(played_card)
 
 	cancel_selection()
 	_host.update_gold_display()

@@ -117,6 +117,11 @@ func _input(event: InputEvent) -> void:
 			is_traveling = true
 			get_tree().call_deferred("change_scene_to_file", "res://bet_view.tscn")
 			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_E:
+			# DEBUG: acesso direto a um evento "?" (mesma ideia da tecla B).
+			is_traveling = true
+			get_tree().call_deferred("change_scene_to_file", "res://event_view.tscn")
+			get_viewport().set_input_as_handled()
 
 func _position_nodes(layers: Array[Array]) -> void:
 	for layer_index in range(layers.size()):
@@ -393,6 +398,8 @@ func _on_node_clicked(node: MapNode) -> void:
 			get_tree().call_deferred("change_scene_to_file", "res://shop_view.tscn")
 		MapNode.NodeType.Aposta:
 			get_tree().call_deferred("change_scene_to_file", "res://bet_view.tscn")
+		MapNode.NodeType.Evento:
+			get_tree().call_deferred("change_scene_to_file", "res://event_view.tscn")
 		_:
 			is_traveling = false
 

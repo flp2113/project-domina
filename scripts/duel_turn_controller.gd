@@ -71,6 +71,13 @@ func on_coin_flip_completed(player_won_white: bool) -> void:
 	_host.current_duel.setup(_host.board, _host.human_team, _host.ai_team, _host.sudden_death_mgr)
 	_host.current_duel.apply_board_modifiers()
 
+	# Leis que mexem no tabuleiro inicial (Guarda Real) e a Moeda Fiel —
+	# só depois que as cores foram sorteadas e as peças posicionadas.
+	if _host.board.rule_pipeline != null:
+		_host.board.rule_pipeline.emit_event(&"board_ready", {}, _host.board)
+		if _host.board.rule_pipeline.has_rule("faithful_coin"):
+			CoinFlipView.rigged_team = _host.human_team
+
 	if _host.current_duel is DuelBoss:
 		var boss_duel = _host.current_duel as DuelBoss
 		boss_duel.should_spawn_new_flies = false
@@ -96,6 +103,13 @@ func on_coin_flip_completed(player_won_white: bool) -> void:
 	_on_battle_started()
 
 func _on_battle_started() -> void:
+	if RunManager.is_ambush_pending() and not TutorialManager.is_active:
+		var ambush_center = _host.board_offset + Vector2(_host.board.cols * _host.cell_size / 2.0, _host.board.rows * _host.cell_size / 2.0)
+		if RunManager.ambush_kind == "setup":
+			_host.rule_banner_view.pop_rule_trigger(ambush_center, "VOCE ATACA DE SURPRESA!", Color(0.5, 0.9, 0.5))
+		else:
+			_host.rule_banner_view.pop_rule_trigger(ambush_center, "EMBOSCADA!", Color(0.95, 0.35, 0.3))
+		await get_tree().create_timer(1.2).timeout
 	await _maybe_show_tutorial_duel_intro()
 	_host.is_tutorial_intro_playing = false
 	_host.current_turn = Board.WHITE
@@ -402,9 +416,39 @@ func play_ai_turn() -> void:
 	var search_depth = 3 if max(board.rows, board.cols) >= 10 else 4
 	var ai_move = CheckersAI.get_best_move(board, search_depth, host.ai_team)
 
+	var last_pos: Vector2i = await _ai_execute_move_chain(ai_move)
+
+	# Lei do Contra-Ataque: peças perdidas viram movimentos extras com OUTRA peça.
+	var counter_rule = null
+	if board.rule_pipeline != null:
+		counter_rule = board.rule_pipeline.get_rule("counter_attack")
+	if counter_rule != null and last_pos.x >= 0 and not host.is_game_over:
+		var extras: int = counter_rule.consume_charges()
+		for i in range(extras):
+			var extra_move = CheckersAI.get_best_move(board, search_depth, host.ai_team, last_pos)
+			if extra_move.is_empty():
+				break
+			host.rule_banner_view.pop_rule_trigger(
+				host.board_offset + Vector2(board.cols * host.cell_size / 2.0, board.rows * host.cell_size / 2.0),
+				"CONTRA-ATAQUE!", Color(0.95, 0.35, 0.3))
+			await get_tree().create_timer(0.45).timeout
+			last_pos = await _ai_execute_move_chain(extra_move)
+
+	await _process_boss_turn_events()
+	host.is_ai_thinking = false
+
+	await _conclude_turn(host.ai_team)
+
+# Executa UM movimento da IA (com a cadeia de capturas obrigatórias que se
+# seguir) e devolve a casa onde a peça terminou — (-1,-1) se não havia movimento.
+func _ai_execute_move_chain(ai_move: Dictionary) -> Vector2i:
+	var host = _host
+	var final_pos := Vector2i(-1, -1)
+	var board = host.board
 	while ai_move.size() > 0:
 		var from_pos = ai_move["from"]
 		var target_pos = ai_move["to"]
+		final_pos = target_pos
 		var moving_piece: BoardPiece = board.grid[from_pos.y][from_pos.x]
 		var was_capture: bool = ai_move.get("is_capture", false)
 		var cap_was_tree: bool = false
@@ -454,11 +498,7 @@ func play_ai_turn() -> void:
 				continue
 
 		break
-
-	await _process_boss_turn_events()
-	host.is_ai_thinking = false
-
-	await _conclude_turn(host.ai_team)
+	return final_pos
 
 # ==========================================
 # CARTAS DE AÇÃO DA IA (heurística simples — não integrada ao minimax)

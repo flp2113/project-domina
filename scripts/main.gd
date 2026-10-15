@@ -204,7 +204,14 @@ func _setup_enemy_side() -> void:
 			_enemy_rules.append(candidate)
 			random_count -= 1
 
-	_ai_starting_cards = LootTables.get_ai_starting_deck(current_duel.get_enemy_card_count())
+	var card_count: int = current_duel.get_enemy_card_count()
+	# Emboscada: quem foi pego de surpresa enfrenta um inimigo mais preparado;
+	# quem armou a emboscada, um mais desprevenido.
+	if RunManager.ambush_kind == "ambushed":
+		card_count += 1
+	elif RunManager.ambush_kind == "setup":
+		card_count = maxi(1, card_count - 1)
+	_ai_starting_cards = LootTables.get_ai_starting_deck(card_count)
 
 # Monta o RulePipeline "ao vivo" do duelo. A fonte da verdade das Leis do
 # jogador é o RunManager (ver comentário lá): este método é chamado de novo

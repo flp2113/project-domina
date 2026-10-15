@@ -7,6 +7,9 @@ const TUTORIAL_MAP_SCENE_PATH: String = "res://tutorial_map_view.tscn"
 func _ready() -> void:
 	_setup_ui()
 
+# Quanto o logo + botões sobem em relação ao centro da tela.
+const MENU_RAISE_PX: float = 70.0
+
 func _setup_ui() -> void:
 	var canvas = CanvasLayer.new()
 	canvas.name = "MenuUILayer"
@@ -40,6 +43,12 @@ func _setup_ui() -> void:
 	var quit_btn = _make_menu_button("SAIR", Color(0.2, 0.1, 0.12), Color(0.8, 0.3, 0.35))
 	quit_btn.pressed.connect(_on_quit_pressed)
 	center_box.add_child(quit_btn)
+
+	# Espaçador no fim: como a caixa é centralizada, ele empurra o conjunto
+	# (logo + botões) pra cima em MENU_RAISE_PX pixels. Ajuste aqui.
+	var raise_spacer = Control.new()
+	raise_spacer.custom_minimum_size = Vector2(10, MENU_RAISE_PX * 2.0)
+	center_box.add_child(raise_spacer)
 
 # Logo em pixel art: escolhe entre a versão grande (640x256) e a pequena (320x128)
 # a que der o maior tamanho com ESCALA INTEIRA que caiba na tela (sem borrar).

@@ -81,7 +81,13 @@ func calculate_reward_gold() -> Dictionary:
 	var capture_gold = get_capture_gold()
 	var surviving_pieces = get_survival_gold(board.count_pieces(human_team))
 
-	var total = base_gold + capture_gold + surviving_pieces
+	# Saque da Emboscada (Evento "?"): pago só na vitória, uma vez.
+	var bonus_gold = 0
+	if RunManager != null and RunManager.is_ambush_pending():
+		bonus_gold = RunManager.ambush_bonus_gold
+		RunManager.clear_ambush()
+
+	var total = base_gold + capture_gold + surviving_pieces + bonus_gold
 
 	if RunManager != null:
 		RunManager.add_gold(total)
@@ -90,5 +96,6 @@ func calculate_reward_gold() -> Dictionary:
 		"base": base_gold,
 		"captures": capture_gold,
 		"survival": surviving_pieces,
+		"bonus": bonus_gold,
 		"total": total
 	}

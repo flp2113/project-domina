@@ -133,6 +133,8 @@ func _run_rewards_animation() -> void:
 		{"label": "CAPTURAS:", "amount": reward_data.get("captures", 0)},
 		{"label": "SOBREVIVENTES:", "amount": reward_data.get("survival", 0)}
 	]
+	if reward_data.get("bonus", 0) > 0:
+		rows.append({"label": "SAQUE:", "amount": reward_data["bonus"]})
 
 	var total_gold_accum = 0
 

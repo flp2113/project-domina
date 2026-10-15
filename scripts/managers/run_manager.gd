@@ -49,6 +49,24 @@ func get_forest_boss_law_id(options: Array) -> String:
 
 signal rules_updated()
 
+# Eventos (nó "?") já vistos nesta run — não se repetem (ver EventView).
+var seen_event_ids: Array = []
+
+# Emboscada (desfecho de um Evento "?"): o próximo duelo é uma escaramuça
+# 6x6 forçada. kind: "" = nenhuma, "ambushed" = o jogador foi pego de surpresa
+# (inimigo com 1 carta a mais), "setup" = o jogador armou a emboscada (inimigo
+# com 1 carta a menos). ambush_bonus_gold é pago na vitória (linha "SAQUE").
+const AMBUSH_BOARD_SIZE: Vector2i = Vector2i(6, 6)
+var ambush_kind: String = ""
+var ambush_bonus_gold: int = 0
+
+func is_ambush_pending() -> bool:
+	return ambush_kind != ""
+
+func clear_ambush() -> void:
+	ambush_kind = ""
+	ambush_bonus_gold = 0
+
 func _ready():
 	start_new_run()
 	if player_deck.is_empty():
@@ -79,6 +97,8 @@ func start_new_run():
 	current_node = null
 	visited_connections = []
 	forest_boss_law_id = ""
+	clear_ambush()
+	seen_event_ids.clear()
 	rule_pipeline.clear_rules()
 	_init_default_deck()
 	

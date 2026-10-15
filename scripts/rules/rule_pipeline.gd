@@ -98,6 +98,26 @@ func filter_capture_reach(piece: BoardPiece, base_reach: int, human_team: int, b
 			reach = rule.modify_capture_reach(piece, reach, board)
 	return reach
 
+func filter_king_range(piece: BoardPiece, human_team: int) -> int:
+	var r = 0
+	for rule in active_rules:
+		if rule.applies_to_team(piece.owner_team, human_team):
+			r = rule.modify_king_range(piece, r)
+	return r
+
+func king_lands_before_victim(piece: BoardPiece, human_team: int) -> bool:
+	for rule in active_rules:
+		if rule.applies_to_team(piece.owner_team, human_team):
+			if rule.king_lands_before_victim(piece):
+				return true
+	return false
+
+func get_rule(rule_id: String) -> RuleCard:
+	for r in active_rules:
+		if r.id == rule_id:
+			return r
+	return null
+
 func is_capture_mandatory(team: int, human_team: int) -> bool:
 	var mandatory = true
 	for rule in active_rules:

@@ -46,7 +46,15 @@ func set_initial_kings_baseline(board: Board) -> void:
 	initial_kings_count = _count_total_kings(board)
 
 func _count_total_kings(board: Board) -> int:
-	return board.count_pieces(Board.WHITE, true) + board.count_pieces(Board.BLACK, true)
+	# Damas "isentas" (Lei da Guarda Real) não contam: senão a Dama inicial
+	# do inimigo ativaria a Morte Súbita logo no começo.
+	var total = 0
+	for r in range(board.rows):
+		for c in range(board.cols):
+			var p: BoardPiece = board.grid[r][c]
+			if p != Board.EMPTY and p.is_king and not p.sd_exempt:
+				total += 1
+	return total
 
 func check_conditions(board: Board, human_team: int, ai_team: int) -> void:
 	if is_active:

@@ -16,6 +16,10 @@ var is_tree: bool = false
 var rooted_turns: int = 0
 # Herdeiro: turnos (do dono) restantes como Dama temporária; 0 = Dama normal ou comum.
 var temp_king_turns: int = 0
+# Lei do Luto: turnos (do dono) com escudo — a próxima captura contra a peça falha.
+var shield_turns: int = 0
+# Lei da Guarda Real: Dama inicial que NÃO conta para ativar a Morte Súbita.
+var sd_exempt: bool = false
 
 static func make_tree() -> BoardPiece:
 	var t = BoardPiece.new(Board.NEUTRAL, false)
@@ -39,4 +43,6 @@ func clone() -> BoardPiece:
 	copy.is_tree = is_tree
 	copy.rooted_turns = rooted_turns
 	copy.temp_king_turns = temp_king_turns
+	copy.shield_turns = shield_turns
+	copy.sd_exempt = sd_exempt
 	return copy

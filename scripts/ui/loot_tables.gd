@@ -22,7 +22,21 @@ static func get_all_rules() -> Array[RuleCard]:
 		RuleSacredZone.new(),
 		RuleVengefulFury.new(),
 		RuleAscension.new(),
-		RuleImpossibleTie.new()
+		RuleImpossibleTie.new(),
+		RuleWeight.new(),
+		RuleMourning.new(),
+		RuleEcho.new(),
+		RuleFaithfulCoin.new()
+	]
+	return rules
+
+# Leis EXCLUSIVAS de inimigo (nunca vendidas nem sorteadas pro jogador): ficam
+# fora de get_all_rules() de propósito. Um Duelo Forte recebe uma delas.
+static func get_enemy_unique_rules() -> Array[RuleCard]:
+	var rules: Array[RuleCard] = [
+		RuleRoyalGuard.new(),
+		RuleCounterAttack.new(),
+		RulePoison.new()
 	]
 	return rules
 

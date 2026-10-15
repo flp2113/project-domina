@@ -76,6 +76,16 @@ func modify_capture_reach(_piece: BoardPiece, base_reach: int, _board: RefCounte
 func try_prevent_capture(_victim: BoardPiece, _board: RefCounted) -> bool:
 	return false
 
+# Alcance máximo (em casas) do passo simples das Damas; 0 = ilimitado.
+# Só quem limita (Lei do Peso) precisa sobrescrever.
+func modify_king_range(_piece: BoardPiece, base_range: int) -> int:
+	return base_range
+
+# true = a Dama pode capturar de longe mesmo sem casa livre atrás da vítima,
+# pousando na casa logo ANTES dela (Lei do Peso).
+func king_lands_before_victim(_piece: BoardPiece) -> bool:
+	return false
+
 # Passo extra (ex: Segundo Movimento): devolve true se a regra concede um
 # passo extra agora e já o consome. Padrão: não concede.
 func try_consume_extra_step() -> bool:

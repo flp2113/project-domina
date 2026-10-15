@@ -139,6 +139,8 @@ func tick_piece_effects(team: int) -> Array:
 				continue
 			if p.rooted_turns > 0:
 				p.rooted_turns -= 1
+			if p.shield_turns > 0:
+				p.shield_turns -= 1
 			if p.temp_king_turns > 0:
 				p.temp_king_turns -= 1
 				if p.temp_king_turns == 0:
@@ -237,6 +239,7 @@ func get_piece_captures(r: int, c: int) -> Array:
 			capture_dirs.append_array([Vector2i(-1, 1), Vector2i(1, 1)])
 
 	if is_king:
+		var lands_before: bool = rule_pipeline != null and rule_pipeline.king_lands_before_victim(piece_obj, human_team_color)
 		# Dama voadora: captura uma peça inimiga a qualquer distância na
 		# diagonal (desde que o caminho até ela esteja livre) e pode pousar
 		# em qualquer casa vazia logo depois dela, não só na adjacente.
@@ -270,6 +273,16 @@ func get_piece_captures(r: int, c: int) -> Array:
 						"optional": occupant.is_tree
 					})
 					landing_dist += 1
+				# Lei do Peso: também pode pousar na casa logo ANTES da vítima
+				# (precisa ter andado pelo menos 1 casa livre).
+				if lands_before and dist >= 2:
+					captures.append({
+						"from": Vector2i(c, r),
+						"to": Vector2i(c + d.x * (dist - 1), r + d.y * (dist - 1)),
+						"is_capture": true,
+						"captured": captured_pos,
+						"optional": occupant.is_tree
+					})
 				break
 		return captures
 
@@ -360,9 +373,15 @@ func get_piece_moves(r: int, c: int) -> Array:
 	if is_king:
 		# Dama voadora: anda quantas casas quiser em linha reta na diagonal,
 		# parando na primeira casa ocupada (ou "queimada") no caminho.
+		# Lei do Peso limita o alcance (max_range > 0).
+		var max_range: int = 0
+		if rule_pipeline != null:
+			max_range = rule_pipeline.filter_king_range(piece_obj, human_team_color)
 		for d in directions:
 			var dist = 1
 			while true:
+				if max_range > 0 and dist > max_range:
+					break
 				var nr: int = r + (d.y * dist)
 				var nc: int = c + (d.x * dist)
 				if not is_valid_pos(nr, nc) or scorched_tiles.has(Vector2i(nc, nr)) or grid[nr][nc] != EMPTY:

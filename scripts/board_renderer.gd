@@ -172,7 +172,7 @@ func _draw_fire_tiles(board: Board, board_offset: Vector2, cell_size: float) -> 
 			draw_colored_polygon(PackedVector2Array([Vector2(bx + w * 0.25, by), Vector2(bx + w * 0.75, by), Vector2(bx + w * 0.5, by - h * 0.55)]), Color(1.0, 0.85, 0.3, 0.95))
 		PixelRenderer.draw_pixel_corners(self, rect, Color(1.0, 0.55, 0.1, 0.95), 8.0, 2.5)
 
-# Marcas de status na peça: grade violeta = imobilizada (Emboscada);
+# Marcas de status na peça: bolha azul = escudo (Lei do Luto); grade violeta = imobilizada (Emboscada);
 # selo dourado com número = Dama temporária (Herdeiro, turnos restantes).
 func _draw_piece_status(piece: BoardPiece, center: Vector2, size: float) -> void:
 	if piece.rooted_turns > 0:
@@ -182,6 +182,18 @@ func _draw_piece_status(piece: BoardPiece, center: Vector2, size: float) -> void
 			var x = center.x - half + half * i
 			draw_line(Vector2(x, center.y - half), Vector2(x, center.y + half), col, 3.0)
 		draw_rect(Rect2(center - Vector2(half, half), Vector2(half * 2.0, half * 2.0)), col, false, 3.0)
+	if piece.shield_turns > 0:
+		# Escudo (Lei do Luto): bolha azul pulsante + contorno ao redor da peça.
+		var pulse = 0.5 + 0.5 * sin(Time.get_ticks_msec() / 220.0)
+		var rad = size * 0.46
+		draw_circle(center, rad, Color(0.35, 0.65, 1.0, 0.16 + 0.1 * pulse))
+		draw_arc(center, rad, 0, TAU, 32, Color(0.55, 0.8, 1.0, 0.75 + 0.25 * pulse), 3.0)
+		# Selo de escudo no canto inferior esquerdo.
+		var sc = center + Vector2(-size * 0.3, size * 0.3)
+		var s = size * 0.13
+		var shield_pts = PackedVector2Array([sc + Vector2(-s, -s), sc + Vector2(s, -s), sc + Vector2(s, s * 0.2), sc + Vector2(0, s * 1.3), sc + Vector2(-s, s * 0.2)])
+		draw_colored_polygon(shield_pts, Color(0.3, 0.6, 0.95))
+		draw_polyline(PackedVector2Array([shield_pts[0], shield_pts[1], shield_pts[2], shield_pts[3], shield_pts[4], shield_pts[0]]), Color(0.9, 0.97, 1.0), 2.0)
 	if piece.temp_king_turns > 0:
 		var badge = center + Vector2(size * 0.3, -size * 0.3)
 		draw_circle(badge, size * 0.15, Color(0.14, 0.1, 0.17))
