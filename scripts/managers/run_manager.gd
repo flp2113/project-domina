@@ -89,7 +89,7 @@ func remove_rule(rule_id: String) -> void:
 	rules_updated.emit()
 
 func start_new_run():
-	gold = 10000
+	gold = 0
 	shop_purchases = 0
 	current_board_size = Vector2i(8, 8)
 	current_node_type = 1
@@ -106,7 +106,7 @@ func start_new_run():
 # DEBUG: começa cada run com UMA cópia de todas as Cartas de Ação do jogo no
 # inventário (para testar). Ponha false para voltar ao baralho inicial normal.
 # Cartas novas entram sozinhas, pois vêm de LootTables.get_all_action_cards().
-const DEBUG_ALL_CARDS: bool = true
+const DEBUG_ALL_CARDS: bool = false
 
 func _init_default_deck() -> void:
 	player_deck.clear()

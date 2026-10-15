@@ -162,9 +162,9 @@ func _build_forest(layers: Array[Array]) -> void:
 	forest.name = "ForestBackground"
 	add_child(forest)
 	move_child(forest, 0)
-	# Uma coluna a menos na largura (só do lado direito); a câmera acompanha o
-	# centro do tabuleiro para ele continuar centralizado na tela.
-	forest.build(layers, TILE_SIZE, MAP_SPRITE_SCALE, -half, half - 1, min_r - 2, max_r + 2)
+	# Uma coluna a menos de cada lado (antes: só do direito), então a largura
+	# fica simétrica em torno do centro; a câmera acompanha o centro do tabuleiro.
+	forest.build(layers, TILE_SIZE, MAP_SPRITE_SCALE, -half + 1, half - 1, min_r - 2, max_r + 2)
 	if camera != null:
 		camera.position.x = forest.world_rect.get_center().x
 	# Base rochosa: o mapa é uma ilha flutuando no espaço (atrás do tabuleiro).

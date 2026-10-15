@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://dxq1n7bqm02b"]
 
-[ext_resource type="Script" path="res://scripts/menu/main_menu.gd" id="1_mmenu"]
+[ext_resource type="Script" uid="uid://cpnrspl306na1" path="res://scripts/menu/main_menu.gd" id="1_mmenu"]
 
-[node name="MainMenu" type="Control"]
+[node name="MainMenu" type="Control" unique_id=161618730]
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0

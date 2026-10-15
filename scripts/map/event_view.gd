@@ -198,7 +198,9 @@ func _requirement_text(req: String) -> String:
 # UI
 # ==========================================
 
-const ART_SIZE: Vector2 = Vector2(960, 440)
+# A arte dos eventos é pixel art nativa 1280x576 (dithering de 1px): mostrada
+# 1:1 pra ficar nítida (reduzir/ampliar com filtro estraga o dithering).
+const ART_SIZE: Vector2 = Vector2(1280, 576)
 const ART_DIR: String = "res://assets/sprites/events/"
 const EVENT_TINTS := {
 	"chest": Color("#6b4a2a"), "merchant": Color("#4a3a6b"), "altar": Color("#3f6f8a"),
@@ -239,7 +241,7 @@ func _setup_ui() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(center)
 	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 150)
+	margin.add_theme_constant_override("margin_left", 380)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.add_child(margin)
 
@@ -306,7 +308,7 @@ func _setup_ui() -> void:
 
 	dim_rect = ColorRect.new()
 	dim_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim_rect.color = Color(0.05, 0.03, 0.08, 0.72)
+	dim_rect.color = Color(0.05, 0.03, 0.08, 0.6)
 	dim_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dim_rect.modulate.a = 0.0
 	art_frame.add_child(dim_rect)
@@ -382,7 +384,7 @@ func _draw_art_placeholder() -> void:
 		art_layer.draw_rect(Rect2(0, t * ART_SIZE.y, ART_SIZE.x, ART_SIZE.y / bands + 1), base.darkened(0.55).lerp(base.lightened(0.1), t))
 	var font = ThemeDB.fallback_font
 	art_layer.draw_string(font, Vector2(0, ART_SIZE.y / 2.0 - 10), String(event["title"]), HORIZONTAL_ALIGNMENT_CENTER, ART_SIZE.x, 54, Color(1, 1, 1, 0.22))
-	art_layer.draw_string(font, Vector2(0, ART_SIZE.y / 2.0 + 34), "[ arte do evento: %s%s.png  -  320x144 ]" % [ART_DIR.trim_prefix("res://"), event["id"]], HORIZONTAL_ALIGNMENT_CENTER, ART_SIZE.x, 22, Color(1, 1, 1, 0.35))
+	art_layer.draw_string(font, Vector2(0, ART_SIZE.y / 2.0 + 34), "[ arte do evento: %s%s.png  -  1280x576 ]" % [ART_DIR.trim_prefix("res://"), event["id"]], HORIZONTAL_ALIGNMENT_CENTER, ART_SIZE.x, 22, Color(1, 1, 1, 0.35))
 
 func _show_event() -> void:
 	title_label.text = event["title"]
