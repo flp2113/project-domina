@@ -17,6 +17,7 @@ func can_play(board: Board, human_team: int, _context: Dictionary = {}) -> bool:
 			if p != Board.EMPTY and p.owner_team == human_team:
 				current_allies += 1
 	# Só pode ser jogada se o jogador perdeu ao menos 1 peça do total inicial
+	@warning_ignore("integer_division")
 	var max_initial = board.get_max_deployment_rows() * (board.cols / 2)
 	return current_allies < max_initial
 

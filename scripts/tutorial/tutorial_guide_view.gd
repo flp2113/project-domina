@@ -49,7 +49,7 @@ var _embers: Array = []
 var _vignette_tex: GradientTexture2D = null
 var _guide_style: StyleBox = null
 # Rosto gigante da virada (desenhado na camada de efeitos, não no retrato).
-var _crown_t: float = -1.0        # coroa caindo sobre o retrato (0..1); -1 = sem coroa
+var _crown_t: float = -1.0        # tempo da "coroação" do Guia (0..1); a coroa NÃO é mais desenhada, só o clarão/tremor; -1 = inativo
 var _big_on: bool = false
 var _big_pos: Vector2 = Vector2.ZERO
 var _big_size: float = 150.0
@@ -116,7 +116,7 @@ func _build_ui() -> void:
 	# --- Caixa de diálogo principal (sequência de falas, bloqueia até
 	# o jogador clicar "continuar") ---
 	dialogue_panel = PanelContainer.new()
-	dialogue_panel.add_theme_stylebox_override("panel", PixelUI.make_pixel_panel(Color(0.08, 0.09, 0.13, 0.97), Color(0.9, 0.75, 0.3), 16))
+	dialogue_panel.add_theme_stylebox_override("panel", PixelUI.make_dialogue_panel(Color("#efe6cf"), 14, 4))
 	dialogue_panel.visible = false
 	dialogue_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	dialogue_panel.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -189,7 +189,7 @@ func _build_ui() -> void:
 
 	# --- Dica pontual (menor, some sozinha, não bloqueia input) ---
 	tip_panel = PanelContainer.new()
-	tip_panel.add_theme_stylebox_override("panel", PixelUI.make_pixel_panel(Color(0.08, 0.09, 0.13, 0.95), Color(0.55, 0.75, 1.0), 14))
+	tip_panel.add_theme_stylebox_override("panel", PixelUI.make_dialogue_panel(Color("#d9a441"), 10, 3))
 	tip_panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	tip_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	tip_panel.offset_top = 24.0
@@ -337,7 +337,7 @@ func _set_speaker(who: String) -> void:
 	name_label.text = SPEAKER_NAMES.get(who, "O GUIA")
 	name_label.add_theme_color_override("font_color", SPEAKER_COLORS.get(who, Color(0.9, 0.75, 0.3)))
 	if who == "evil":
-		dialogue_panel.add_theme_stylebox_override("panel", PixelUI.make_pixel_panel(Color(0.16, 0.03, 0.04, 0.97), Color(0.95, 0.2, 0.2), 24))
+		dialogue_panel.add_theme_stylebox_override("panel", PixelUI.make_dialogue_panel(Color(0.95, 0.2, 0.2), 14, 4))
 	elif _guide_style != null:
 		dialogue_panel.add_theme_stylebox_override("panel", _guide_style)
 
@@ -442,8 +442,8 @@ func _run_flip_line(line: Dictionary) -> void:
 	_typing = true
 	continue_btn.text = "CONTINUAR" if current_line_index < lines.size() - 1 else "ENTENDIDO"
 
-# Coroação do Guia: clarão dourado, a coroa cai sobre o retrato e fica lá
-# (até a virada começar ou a sequência acabar); só depois a fala é digitada.
+# Coroação do Guia: clarão dourado e tremor (sem desenhar coroa no retrato);
+# só depois a fala é digitada.
 func _run_crown_line(line: Dictionary) -> void:
 	_flipping = true
 	_typing = false
@@ -508,39 +508,8 @@ func _draw_fx() -> void:
 		var a = clampf(e["life"] / e["max"], 0.0, 1.0)
 		_fx.draw_rect(Rect2(e["pos"], Vector2.ONE * e["size"]), Color(1.0, 0.35 + 0.4 * a, 0.1, a))
 
-func _draw_crown(canvas: Control, box: Rect2, t: float) -> void:
-	# t 0..0.55 cai de cima; 0.55..1 brilha/assenta.
-	var drop = clampf(t / 0.55, 0.0, 1.0)
-	var y_off = -(1.0 - drop * drop) * box.size.y * 0.9
-	var w = box.size.x * 0.62
-	var h = box.size.y * 0.34
-	var x0 = box.position.x + (box.size.x - w) / 2.0
-	var y1 = box.position.y + box.size.y * 0.08 + y_off   # base da coroa
-	var y0 = y1 - h
-	var gold = Color(1.0, 0.82, 0.2)
-	var dark = Color(0.55, 0.38, 0.05)
-	var pts = PackedVector2Array([
-		Vector2(x0, y1), Vector2(x0, y0 + h * 0.15), Vector2(x0 + w * 0.22, y0 + h * 0.55),
-		Vector2(x0 + w * 0.5, y0), Vector2(x0 + w * 0.78, y0 + h * 0.55), Vector2(x0 + w, y0 + h * 0.15),
-		Vector2(x0 + w, y1)])
-	canvas.draw_colored_polygon(pts, gold)
-	canvas.draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[4], pts[5], pts[6], pts[0]]), dark, 3.0)
-	canvas.draw_rect(Rect2(x0, y1 - h * 0.22, w, h * 0.22), Color(0.95, 0.7, 0.15))
-	for gx in [0.0, 0.5, 1.0]:
-		canvas.draw_circle(Vector2(x0 + w * gx, y0 + (h * 0.15 if gx != 0.5 else 0.0)), 5.0, Color(0.9, 0.2, 0.25))
-	if t > 0.55:
-		var k = (t - 0.55) / 0.45
-		for i in range(4):
-			var a = _t * 3.0 + i * 1.57
-			var c = Vector2(x0 + w * (0.1 + 0.27 * i), y0 - 4.0 - 10.0 * absf(sin(a)))
-			var s = 9.0 * (1.0 - k * 0.4) * (0.6 + 0.4 * sin(a * 2.0))
-			canvas.draw_line(c - Vector2(s, 0), c + Vector2(s, 0), Color(1, 1, 0.8), 2.0)
-			canvas.draw_line(c - Vector2(0, s), c + Vector2(0, s), Color(1, 1, 0.8), 2.0)
-
 func _draw_fx_top() -> void:
 	var vp = _fx_top.size
-	if _crown_t >= 0.0 and not _big_on:
-		_draw_crown(_fx_top, portrait.get_global_rect(), _crown_t)
 	if _big_on:
 		var tex: Texture2D = portrait.texture_for(_big_who, 0)
 		var d = _big_size * _big_toss
@@ -674,11 +643,6 @@ func pulse_rect(rect: Rect2, duration: float = 4.5) -> void:
 func pulse_spot(spot_id: String, duration: float = 4.5) -> void:
 	_pulse_spot_id = spot_id
 	_pulse_until = _t + duration
-
-func clear_spot() -> void:
-	_line_spot_id = ""
-	_obj_spot_id = ""
-	_pulse_until = 0.0
 
 func _resolve(spot_id: String) -> Rect2:
 	if spot_id == "" or not spot_resolver.is_valid():
@@ -860,7 +824,7 @@ func _draw_overlay() -> void:
 	for corner in [rect.position, Vector2(rect.end.x, rect.position.y), Vector2(rect.position.x, rect.end.y), rect.end]:
 		var sx = -1.0 if corner.x >= rect.end.x - 0.5 else 1.0
 		var sy = -1.0 if corner.y >= rect.end.y - 0.5 else 1.0
-		_overlay.draw_rect(Rect2(corner + Vector2(0 if sx > 0 else -cs, 0 if sy > 0 else -cs), Vector2(cs, cs)), Color(1.0, 0.95, 0.6, 0.9), false, 3.0)
+		_overlay.draw_rect(Rect2(corner + Vector2(0.0 if sx > 0 else -cs, 0.0 if sy > 0 else -cs), Vector2(cs, cs)), Color(1.0, 0.95, 0.6, 0.9), false, 3.0)
 
 	# Seta com legenda (só para alvos pequenos o bastante).
 	var big: bool = rect.size.x * rect.size.y > vp.x * vp.y * 0.28

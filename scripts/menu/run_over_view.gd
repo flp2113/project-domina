@@ -20,6 +20,8 @@ var _bank_label: Label
 var _msg_label: Label
 var _menu_btn: Button
 var _meta_btn: Button
+var _total_row: Control
+var _tour: MetaTour
 var _skip: bool = false
 var _done: bool = false
 
@@ -60,7 +62,9 @@ func _build_ui() -> void:
 	v.add_child(title)
 
 	var sub := Label.new()
-	sub.text = "O Chefe caiu. Seus feitos rendem Coroas." if won else "Sua run terminou, mas o que você aprendeu fica."
+	# Só a vitória tem subtítulo; na derrota o texto foi removido (e o espaço some junto).
+	sub.text = "O Chefe caiu. Seus feitos rendem Coroas." if won else ""
+	sub.visible = won
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_font_size_override("font_size", 22)
 	sub.add_theme_color_override("font_color", C_CREAM)
@@ -80,6 +84,7 @@ func _build_ui() -> void:
 	total_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	total_row.add_theme_constant_override("separation", 14)
 	v.add_child(total_row)
+	_total_row = total_row
 	total_row.add_child(PixelUI.make_hud_icon("icone_coroa", 48.0))
 	_total_label = Label.new()
 	_total_label.text = "+0"
@@ -211,8 +216,99 @@ func _run_tally() -> void:
 	_done = true
 	_menu_btn.disabled = false
 	_meta_btn.disabled = false
+	# 1ª tela de fim de run: mini guia das Coroas.
+	if not MetaProgress.run_over_tour_seen:
+		await get_tree().create_timer(0.6).timeout
+		_start_tour()
+		await _tour.finished
+	# 1º Chefe derrotado: aviso de que a alpha termina aqui.
+	if bool(_summary["won"]) and not MetaProgress.alpha_end_seen:
+		await get_tree().create_timer(0.5).timeout
+		_show_alpha_end()
+
+# ---------------------------------------------------------------------
+# Mini guia das Coroas (só na primeira vez; reaproveita o MetaTour do Grimório)
+# ---------------------------------------------------------------------
+func _start_tour() -> void:
+	if _tour != null:
+		return
+	_tour = MetaTour.new()
+	_tour.steps = [
+		{"text": "Estas são as suas COROAS, a moeda do GRIMÓRIO. Diferente do ouro, elas NÃO somem quando a run acaba: ficam guardadas para sempre.",
+			"target": "total", "place": "below", "tab": -1},
+		{"text": "Você ganha Coroas jogando: %d por duelo vencido, %d por duelo forte e %d ao derrotar o Chefe. Elas valem mesmo se você perder ou desistir da run." % [MetaProgress.COROAS_PER_DUEL, MetaProgress.COROAS_PER_STRONG, MetaProgress.COROAS_BOSS_WIN],
+			"target": "rows", "place": "below", "tab": -1},
+		{"text": "No GRIMÓRIO você gasta as Coroas para desbloquear CARTAS e LEIS novas, que passam a aparecer nas suas próximas runs, e para montar kits e levar peças já na largada. Dê uma passada por lá!",
+			"target": "meta", "place": "above", "tab": -1},
+	]
+	_tour.target_provider = _tour_target
+	_tour.finished.connect(_on_tour_finished)
+	add_child(_tour)
+	_tour.start()
+
+func _tour_target(id: String) -> Rect2:
+	match id:
+		"total": return _total_row.get_global_rect()
+		"rows": return _rows_box.get_global_rect()
+		"meta": return _meta_btn.get_global_rect()
+	return Rect2()
+
+func _on_tour_finished() -> void:
+	MetaProgress.mark_run_over_tour_seen()
+	if _tour != null:
+		_tour.queue_free()
+		_tour = null
 
 func _pulse_total() -> void:
 	_total_label.pivot_offset = _total_label.size / 2.0
 	_total_label.scale = Vector2(1.15, 1.15)
 	create_tween().tween_property(_total_label, "scale", Vector2.ONE, 0.1)
+
+# ---------------------------------------------------------------------
+# Fim da alpha (aparece uma única vez, ao derrotar o Chefe pela 1ª vez)
+# ---------------------------------------------------------------------
+func _show_alpha_end() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 150
+	add_child(layer)
+
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.75)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	layer.add_child(dim)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", PixelUI.make_dialogue_panel(C_GOLD, 26, 4))
+	center.add_child(panel)
+
+	var v := VBoxContainer.new()
+	v.custom_minimum_size = Vector2(820, 0)
+	v.add_theme_constant_override("separation", 22)
+	panel.add_child(v)
+
+	var title := Label.new()
+	title.text = "FIM DA VERSÃO ALPHA"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 42)
+	title.add_theme_color_override("font_color", C_GOLD)
+	v.add_child(title)
+
+	var msg := Label.new()
+	msg.text = "Infelizmente esta é a versão alpha e a jornada termina por aqui.\n\nNo jogo final, a partir daqui você seguiria para novas ilhas com novos temas além da floresta, com chefes únicos e a dificuldade aumentando ainda mais.\n\nAlém de ter novas leis e cartas para desbloquear no grimório."
+	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	msg.autowrap_mode = TextServer.AUTOWRAP_WORD
+	msg.add_theme_font_size_override("font_size", 28)
+	msg.add_theme_color_override("font_color", C_CREAM)
+	v.add_child(msg)
+
+	var ok := _make_btn("ENTENDIDO", Color(0.3, 0.9, 0.4))
+	ok.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	ok.pressed.connect(func():
+		MetaProgress.mark_alpha_end_seen()
+		layer.queue_free())
+	v.add_child(ok)

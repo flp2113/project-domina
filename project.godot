@@ -14,9 +14,11 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
-config/name="Checkers Roguelite"
+config/name="Domina"
+config/icon="res://icon.png"
+config/version="0.1.5-alpha"
 run/main_scene="res://main_menu.tscn"
-config/features=PackedStringArray("4.6", "Forward Plus")
+config/features=PackedStringArray("4.7", "Forward Plus")
 
 [autoload]
 

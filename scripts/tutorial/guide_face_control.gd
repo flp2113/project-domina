@@ -41,6 +41,7 @@ func _frame_index() -> int:
 		return 0
 	# Passeia pelas bocas abertas (1..6) numa ordem que não parece repetitiva.
 	var step := int(_t * TALK_FPS)
+	@warning_ignore("integer_division")
 	return 1 + (step * 5 + (step / 6) * 2) % 6
 
 var _atlas_cache: Dictionary = {}

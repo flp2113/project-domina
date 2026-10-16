@@ -282,7 +282,7 @@ static func _pick_variant(pool: Array, want: int, is_light: bool, r: int, c: int
 		use_count[_vkey(is_light, best)] = best_n + 1
 	return best
 
-static func _pick_clean(pool: Array, is_light: bool, r: int, c: int, use_count: Dictionary) -> int:
+static func _pick_clean(pool: Array, _is_light: bool, r: int, c: int, _use_count: Dictionary) -> int:
 	var cleans: Array = []
 	for i in range(pool.size()):
 		if pool[i]["score"] <= _CLEAN_MAX:

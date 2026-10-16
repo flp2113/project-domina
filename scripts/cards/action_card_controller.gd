@@ -164,6 +164,8 @@ func _execute_selected_card(pos: Vector2i) -> void:
 	# cair — sem esperar aqui, a carta seria descartada e a mão
 	# atualizada antes da animação sequer começar.
 	var played_card: ActionCard = selected_action_card
+	Juice.sparkle(_host, _host.get_global_mouse_position(), 18)   # juice: fagulhas ao jogar
+	@warning_ignore("redundant_await")
 	await selected_action_card.execute(_host.board, pos, _host.human_team, _build_context())
 	TutorialManager.report_event("card_used")
 

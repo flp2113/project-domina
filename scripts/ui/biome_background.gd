@@ -129,8 +129,9 @@ const PATTERNS: Array[String] = ["losango", "xadrez", "escamas", "estrelas", "di
 
 # Ladrilho 24x24 SEM emendas (periódico em x e y). Cada padrão usa as mesmas 3
 # cores do bioma: fio (line), pontinho (dot) e miolo (fill).
-static func _make_tile(cfg: Dictionary, pattern: String = "losango") -> ImageTexture:
+static func _make_tile(cfg: Dictionary, tile_pattern: String = "losango") -> ImageTexture:
 	var n: int = TILE_ART
+	@warning_ignore("integer_division")
 	var h: int = n / 2
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	var line: Color = cfg["line"]
@@ -138,9 +139,10 @@ static func _make_tile(cfg: Dictionary, pattern: String = "losango") -> ImageTex
 	var fill: Color = cfg["fill"]
 	for y in range(n):
 		for x in range(n):
-			match pattern:
+			match tile_pattern:
 				"xadrez":
 					# Casas de 12x12 alternadas, com fio fino na divisa e pontinho no miolo.
+					@warning_ignore("integer_division")
 					var dark_sq: bool = ((x / h) + (y / h)) % 2 == 0
 					if dark_sq:
 						img.set_pixel(x, y, fill)
@@ -194,7 +196,7 @@ static func _make_tile(cfg: Dictionary, pattern: String = "losango") -> ImageTex
 						img.set_pixel(x, y, line)
 					elif dd < h - 3:
 						img.set_pixel(x, y, fill)
-	if pattern == "losango":
+	if tile_pattern == "losango":
 		for c in [Vector2i(h, h), Vector2i(h - 1, h), Vector2i(h, h - 1), Vector2i(h - 1, h - 1),
 				Vector2i(0, 0), Vector2i(n - 1, 0), Vector2i(0, n - 1), Vector2i(n - 1, n - 1)]:
 			img.set_pixel(c.x, c.y, dot)

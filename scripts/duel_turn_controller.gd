@@ -253,15 +253,15 @@ func handle_cell_click(pos: Vector2i) -> void:
 				host.hud_bar.update_gold()
 
 			if promoted:
-				var piece: BoardPiece = board.grid[pos.y][pos.x]
-				if piece != Board.EMPTY:
+				var promo_piece: BoardPiece = board.grid[pos.y][pos.x]
+				if promo_piece != Board.EMPTY:
 					var center = host.board_offset + Vector2(pos.x * host.cell_size + host.cell_size / 2.0, pos.y * host.cell_size + host.cell_size / 2.0)
 					var board_center = host.board_offset + Vector2(board.cols * host.cell_size / 2.0, board.rows * host.cell_size / 2.0)
-					var should_promote = await _maybe_resolve_ascension_law(host, piece, board_center)
+					var should_promote = await _maybe_resolve_ascension_law(host, promo_piece, board_center)
 					if should_promote:
 						_show_rule_promotion_banner(pos, center)
 						host.animating_coronation_tile = pos
-						await host.king_animation_view.play_coronation(center, host.cell_size, piece)
+						await host.king_animation_view.play_coronation(center, host.cell_size, promo_piece)
 						host.animating_coronation_tile = Vector2i(-1, -1)
 						await host.tutorial_maybe_show_tip("first_promotion")
 						TutorialManager.report_event("promotion")
@@ -271,7 +271,7 @@ func handle_cell_click(pos: Vector2i) -> void:
 			# lista não conta (ele não é uma captura de verdade).
 			if was_capture and not promoted:
 				var follow_up_all = board.get_piece_captures(pos.y, pos.x)
-				var follow_up_captures = follow_up_all.filter(func(m): return m.get("is_capture", false) and not m.get("optional", false))
+				var follow_up_captures = follow_up_all.filter(func(mv): return mv.get("is_capture", false) and not mv.get("optional", false))
 				if not follow_up_captures.is_empty():
 					host.multi_jump_tile = pos
 					host.selected_tile = pos
@@ -539,6 +539,7 @@ func _maybe_play_ai_card() -> void:
 			# acelerar visualmente enquanto o código continua esperando o
 			# tempo cheio por baixo dos panos.
 			await host.ai_card_reveal_view.sequence_finished
+		@warning_ignore("redundant_await")
 		await card.execute(board, target, host.ai_team, context)
 		return
 
@@ -555,6 +556,7 @@ func _find_ai_card_target(card: ActionCard, board: Board, host: Node2D) -> Varia
 		"recruit", "rebuild":
 			return _ai_find_deployment_target(card, board, host.ai_team)
 		"extra_turn":
+			@warning_ignore("incompatible_ternary")
 			return Vector2i.ZERO if _ai_should_play_extra_turn(board, host) else null
 		"retreat":
 			return _ai_find_retreat_target(board, host)
@@ -601,7 +603,7 @@ func _ai_find_fortify_target(board: Board, host: Node2D) -> Variant:
 	return null
 
 # Grande Reforço: joga se alguma fileira da IA estiver totalmente vazia dela.
-func _ai_find_empty_row_target(board: Board, ai_team: int) -> Variant:
+func _ai_find_empty_row_target(board: Board, _ai_team: int) -> Variant:
 	# A IA sempre joga do lado oposto ao human_team_color, então as
 	# fileiras de trás dela são sempre as primeiras (0 até
 	# BACK_ROWS-1) — mesma restrição que a própria carta já aplica em
@@ -609,10 +611,10 @@ func _ai_find_empty_row_target(board: Board, ai_team: int) -> Variant:
 	# carta, pra não depender de uma referência entre arquivos frágil).
 	const BACK_ROWS = 3
 	for row in range(BACK_ROWS):
+		# Mesma regra da carta: a fileira precisa estar TOTALMENTE vazia.
 		var empty_of_team = true
 		for c in range(board.cols):
-			var p: BoardPiece = board.grid[row][c]
-			if p != Board.EMPTY and p.owner_team == ai_team:
+			if board.grid[row][c] != Board.EMPTY:
 				empty_of_team = false
 				break
 		if empty_of_team:

@@ -49,6 +49,8 @@ func _setup_ui() -> void:
 	quit_btn.pressed.connect(_on_quit_pressed)
 	center_box.add_child(quit_btn)
 
+	_add_version_label(canvas)
+
 	# Espaçador no fim: como a caixa é centralizada, ele empurra o conjunto
 	# (logo + botões) pra cima em MENU_RAISE_PX pixels. Ajuste aqui.
 	var raise_spacer = Control.new()
@@ -89,7 +91,7 @@ func _make_logo() -> Control:
 	logo.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	return logo
 
-func _make_menu_button(text: String, bg_color: Color, border_color: Color) -> Button:
+func _make_menu_button(text: String, _bg_color: Color, border_color: Color) -> Button:
 	var btn = Button.new()
 	btn.text = text
 	btn.custom_minimum_size = Vector2(360, 68)
@@ -98,7 +100,32 @@ func _make_menu_button(text: String, bg_color: Color, border_color: Color) -> Bu
 	PixelUI.skin_button(btn, border_color)
 	return btn
 
+# Versão do jogo (Project Settings > Application > Config > Version), discreta
+# no canto inferior direito.
+func _add_version_label(canvas: CanvasLayer) -> void:
+	var v: String = str(ProjectSettings.get_setting("application/config/version", ""))
+	if v == "":
+		return
+	var lbl := Label.new()
+	lbl.text = "v" + v
+	lbl.add_theme_font_size_override("font_size", 18)
+	lbl.add_theme_color_override("font_color", Color(0.94, 0.9, 0.81, 0.4))
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	lbl.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	lbl.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	lbl.offset_right = -16
+	lbl.offset_bottom = -10
+	canvas.add_child(lbl)
+
 func _on_play_pressed() -> void:
+	# Quem nunca concluiu o tutorial recebe um aviso antes da primeira run.
+	if not MetaProgress.tutorial_done and not MetaProgress.tutorial_warned:
+		_show_tutorial_warning()
+		return
+	_start_run()
+
+func _start_run() -> void:
 	if RunManager != null:
 		RunManager.start_new_run()
 		MetaProgress.consume_bag_into_run()
@@ -114,3 +141,79 @@ func _on_tutorial_pressed() -> void:
 
 func _on_quit_pressed() -> void:
 	get_tree().quit()
+
+# ---------------------------------------------------------------------
+# Aviso "faça o tutorial antes" (só enquanto MetaProgress.tutorial_done = false)
+# ---------------------------------------------------------------------
+var _warn_layer: CanvasLayer = null
+
+func _show_tutorial_warning() -> void:
+	if _warn_layer != null:
+		return
+	_warn_layer = CanvasLayer.new()
+	_warn_layer.layer = 150
+	add_child(_warn_layer)
+
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.7)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_warn_layer.add_child(dim)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_warn_layer.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(760, 0)
+	panel.add_theme_stylebox_override("panel", PixelUI.make_dialogue_panel(Color(0.85, 0.64, 0.25), 22, 4))
+	center.add_child(panel)
+
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 20)
+	panel.add_child(v)
+
+	var title := Label.new()
+	title.text = "TEM CERTEZA?"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 40)
+	title.add_theme_color_override("font_color", Color(0.85, 0.64, 0.25))
+	v.add_child(title)
+
+	var msg := Label.new()
+	msg.text = "Você ainda não concluiu o tutorial.\nRecomendo fortemente que o conclua antes da sua primeira jogatina."
+	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	msg.autowrap_mode = TextServer.AUTOWRAP_WORD
+	msg.add_theme_font_size_override("font_size", 28)
+	msg.add_theme_color_override("font_color", Color(0.94, 0.9, 0.81))
+	v.add_child(msg)
+
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 20)
+	v.add_child(row)
+
+	var tut_btn := _make_menu_button("FAZER O TUTORIAL", Color.BLACK, Color(0.35, 0.7, 1.0))
+	tut_btn.custom_minimum_size = Vector2(330, 64)
+	tut_btn.pressed.connect(func():
+		_close_tutorial_warning()
+		_on_tutorial_pressed())
+	row.add_child(tut_btn)
+
+	var play_btn := _make_menu_button("JOGAR MESMO ASSIM", Color.BLACK, Color(0.3, 0.9, 0.4))
+	play_btn.custom_minimum_size = Vector2(330, 64)
+	play_btn.pressed.connect(func():
+		MetaProgress.mark_tutorial_warned()   # não pergunta de novo
+		_close_tutorial_warning()
+		_start_run())
+	row.add_child(play_btn)
+
+func _close_tutorial_warning() -> void:
+	if _warn_layer != null:
+		_warn_layer.queue_free()
+		_warn_layer = null
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _warn_layer != null and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+		_close_tutorial_warning()
+		get_viewport().set_input_as_handled()

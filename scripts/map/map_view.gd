@@ -110,20 +110,31 @@ func _input(event: InputEvent) -> void:
 			if inventory_ui and inventory_ui.visible:
 				inventory_ui.visible = false
 				get_viewport().set_input_as_handled()
-		elif event.keycode == KEY_B:
+		elif DebugFlags.SHORTCUTS and event.keycode == KEY_B:
 			# DEBUG: acesso direto à mesa de apostas, sem precisar achar o
 			# nó no mapa — só pra facilitar teste, não é um atalho pro
 			# jogo normal.
 			is_traveling = true
 			SceneTransition.go("res://bet_view.tscn")
 			get_viewport().set_input_as_handled()
-		elif event.keycode == KEY_E:
+		elif DebugFlags.SHORTCUTS and event.keycode == KEY_E:
 			# DEBUG: acesso direto a um evento "?" (mesma ideia da tecla B).
 			is_traveling = true
 			SceneTransition.go("res://event_view.tscn")
 			get_viewport().set_input_as_handled()
 
 func _position_nodes(layers: Array[Array]) -> void:
+	# O sorteio de deslocamento horizontal pode deixar dois nós ligados longe
+	# demais pra a trilha (só 5 casas de altura, diagonais de 1 casa) chegar:
+	# ela terminava no vazio. Sorteia de novo até todas as ligações alcançarem;
+	# se falhar (raro), usa o layout sem deslocamento.
+	for attempt in range(40):
+		_place_nodes(layers, attempt < 39)
+		if _all_trails_reach(layers):
+			return
+	_place_nodes(layers, false)
+
+func _place_nodes(layers: Array[Array], random_shift: bool) -> void:
 	for layer_index in range(layers.size()):
 		var layer = layers[layer_index]
 		var total_nodes = layer.size()
@@ -132,7 +143,7 @@ func _position_nodes(layers: Array[Array]) -> void:
 		# Espalha melhor: camadas mais estreitas que o máximo deslizam 1 casa
 		# para a esquerda/direita (começo e chefe ficam no centro), então o mapa
 		# não vira uma coluna simétrica.
-		if total_nodes > 1 and total_nodes < 4:
+		if random_shift and total_nodes > 1 and total_nodes < 4:
 			start_col += [-1, 0, 1].pick_random()
 
 		for node_index in range(total_nodes):
@@ -143,6 +154,16 @@ func _position_nodes(layers: Array[Array]) -> void:
 				grid_col += 1
 
 			node.position = Vector2(grid_col * TILE_SIZE, grid_row * TILE_SIZE)
+
+# A trilha sobe TILES_PER_LAYER casas e anda no máximo 1 coluna por casa.
+func _all_trails_reach(layers: Array[Array]) -> bool:
+	for layer in layers:
+		for node in layer:
+			for child in node.children:
+				var dx: int = absi(int(round((child.position.x - node.position.x) / TILE_SIZE)))
+				if dx > TILES_PER_LAYER:
+					return false
+	return true
 
 func _build_forest(layers: Array[Array]) -> void:
 	var min_c := 0
@@ -230,8 +251,8 @@ const _NODE_SPRITES: Dictionary = {
 	MapNode.NodeType.Chefe: "nodo_boss",
 	MapNode.NodeType.Loja: "nodo_loja",
 	MapNode.NodeType.Evento: "nodo_evento",
-	MapNode.NodeType.Melhoria: "nodo_estrela",
 	MapNode.NodeType.Aposta: "nodo_aposta",
+	MapNode.NodeType.Altar: "nodo_lei",
 }
 
 var node_art: Dictionary = {}        # MapNode -> {"base": TextureRect, "ind": TextureRect}
@@ -262,6 +283,7 @@ func _instantiate_node_ui(layers: Array[Array]) -> void:
 			btn.size = node_px
 			btn.position = node.position - (btn.size / 2.0)
 			btn.pressed.connect(_on_node_clicked.bind(node))
+			Juice.hover_pop(btn, 1.12, 0.92)   # só nós clicáveis recebem mouse
 			btn.mouse_entered.connect(_on_node_hover.bind(node, true))
 			btn.mouse_exited.connect(_on_node_hover.bind(node, false))
 			nodes_container.add_child(btn)
@@ -375,6 +397,9 @@ func _on_node_clicked(node: MapNode) -> void:
 		inventory_ui.visible = false
 
 	is_traveling = true
+	if node_buttons.has(node):
+		var nb: Button = node_buttons[node]
+		Juice.sparkle(self, nb.global_position + nb.size * 0.5, 14)
 	# O peão sai do soquete: passa a ser desenhado avulso durante o salto.
 	player_pawn.position = RunManager.current_node.position if RunManager.current_node != null else node.position
 	pawn_rest_node = null
@@ -400,6 +425,8 @@ func _on_node_clicked(node: MapNode) -> void:
 			SceneTransition.go("res://bet_view.tscn")
 		MapNode.NodeType.Evento:
 			SceneTransition.go("res://event_view.tscn")
+		MapNode.NodeType.Altar:
+			SceneTransition.go("res://altar_view.tscn")
 		_:
 			is_traveling = false
 

@@ -71,6 +71,7 @@ static func socket_with_pawn(sprite_name: String) -> Texture2D:
 	img.convert(Image.FORMAT_RGBA8)
 	var pimg: Image = pawn_tex.get_image()
 	pimg.convert(Image.FORMAT_RGBA8)
+	@warning_ignore("integer_division")
 	var off = Vector2i((img.get_width() - pimg.get_width()) / 2, (img.get_height() - pimg.get_height()) / 2)
 	img.blend_rect(pimg, Rect2i(Vector2i.ZERO, pimg.get_size()), off)
 	img.resize(img.get_width() * NODE_SPRITE_SCALE, img.get_height() * NODE_SPRITE_SCALE, Image.INTERPOLATE_NEAREST)
@@ -116,8 +117,10 @@ static func socket_with_ring(sprite_name: String, ring_name: String, with_pawn: 
 		if pawn_tex:
 			var pimg: Image = pawn_tex.get_image()
 			pimg.convert(Image.FORMAT_RGBA8)
+			@warning_ignore("integer_division")
 			bimg.blend_rect(pimg, Rect2i(Vector2i.ZERO, pimg.get_size()), Vector2i((bimg.get_width() - pimg.get_width()) / 2, (bimg.get_height() - pimg.get_height()) / 2))
 	var canvas := Image.create(rimg.get_width(), rimg.get_height(), false, Image.FORMAT_RGBA8)
+	@warning_ignore("integer_division")
 	canvas.blend_rect(bimg, Rect2i(Vector2i.ZERO, bimg.get_size()), Vector2i((canvas.get_width() - bimg.get_width()) / 2, (canvas.get_height() - bimg.get_height()) / 2))
 	var drop: int = int(_RING_DROP_NATIVE.get(ring_name, 0.0))
 	var rh: int = rimg.get_height()
@@ -126,6 +129,7 @@ static func socket_with_ring(sprite_name: String, ring_name: String, with_pawn: 
 		# O interior do anel é 1 px mais baixo que a peça: tira UMA linha do
 		# equador (parte reta dos lados, sem perda visual) e encaixa as duas
 		# metades, o que encolhe o anel 1 px só na vertical.
+		@warning_ignore("integer_division")
 		var cut: int = int(_RING_CUT_ROW.get(ring_name, rh / 2))
 		canvas.blend_rect(rimg, Rect2i(0, 0, rw, cut), Vector2i(0, drop))
 		canvas.blend_rect(rimg, Rect2i(0, cut + 1, rw, rh - cut - 1), Vector2i(0, drop + cut))

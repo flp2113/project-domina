@@ -16,7 +16,7 @@ func execute(board: Board, target_pos: Vector2i, _human_team: int, context: Dict
 		board.piece_destroyed.emit(target_pos, piece)
 		
 		if RunManager != null:
-			RunManager.gold += 5
+			RunManager.add_effect_gold(5)
 
 		var deck_mgr = context.get("deck_mgr")
 		if deck_mgr != null and deck_mgr.has_method("draw_cards"):

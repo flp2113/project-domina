@@ -17,8 +17,8 @@ const SAVE_PATH: String = "user://meta.cfg"
 
 # Ganho por run
 const COROAS_PER_DUEL: int = 2
-const COROAS_PER_STRONG: int = 4
-const COROAS_BOSS_WIN: int = 15
+const COROAS_PER_STRONG: int = 5
+const COROAS_BOSS_WIN: int = 20
 
 # Preço de desbloqueio por raridade (0 comum, 1 raro, 2 épico, 3 lendário)
 const RULE_UNLOCK_COST: Array[int] = [8, 15, 25, 40]
@@ -65,6 +65,10 @@ var equipped_kit: String = ""
 # Mochila da próxima run: [{"t": "card"|"rule", "id", "paid": int, "kit": String}]
 var bag: Array[Dictionary] = []
 var oficina_tour_seen: bool = false   # guia do Grimório já exibido
+var run_over_tour_seen: bool = false   # mini guia das Coroas (1ª tela de fim de run) já exibido
+var alpha_end_seen: bool = false      # mensagem de fim da alpha (1º Chefe derrotado) já exibida
+var tutorial_warned: bool = false     # jogador escolheu 'jogar mesmo assim' sem o tutorial (aviso não volta)
+var tutorial_done: bool = false       # jogador já concluiu o tutorial até o fim
 
 # Estatísticas da run em andamento (zeradas em RunManager.start_new_run).
 var run_duels_won: int = 0
@@ -97,6 +101,10 @@ func load_data() -> void:
 			if e is Dictionary and e.has("id") and e.has("t"):
 				bag.append({"t": str(e["t"]), "id": str(e["id"]), "paid": int(e.get("paid", 0)), "kit": str(e.get("kit", ""))})
 	oficina_tour_seen = bool(cfg.get_value("meta", "oficina_tour_seen", false))
+	tutorial_done = bool(cfg.get_value("meta", "tutorial_done", false))
+	run_over_tour_seen = bool(cfg.get_value("meta", "run_over_tour_seen", false))
+	alpha_end_seen = bool(cfg.get_value("meta", "alpha_end_seen", false))
+	tutorial_warned = bool(cfg.get_value("meta", "tutorial_warned", false))
 	_sanitize()
 
 func save_data() -> void:
@@ -108,6 +116,10 @@ func save_data() -> void:
 	cfg.set_value("meta", "equipped_kit", equipped_kit)
 	cfg.set_value("meta", "bag", bag)
 	cfg.set_value("meta", "oficina_tour_seen", oficina_tour_seen)
+	cfg.set_value("meta", "tutorial_done", tutorial_done)
+	cfg.set_value("meta", "run_over_tour_seen", run_over_tour_seen)
+	cfg.set_value("meta", "alpha_end_seen", alpha_end_seen)
+	cfg.set_value("meta", "tutorial_warned", tutorial_warned)
 	cfg.save(SAVE_PATH)
 
 func _to_str_array(v) -> Array[String]:
@@ -128,6 +140,26 @@ func mark_oficina_tour_seen() -> void:
 		oficina_tour_seen = true
 		save_data()
 
+func mark_alpha_end_seen() -> void:
+	if not alpha_end_seen:
+		alpha_end_seen = true
+		save_data()
+
+func mark_run_over_tour_seen() -> void:
+	if not run_over_tour_seen:
+		run_over_tour_seen = true
+		save_data()
+
+func mark_tutorial_warned() -> void:
+	if not tutorial_warned:
+		tutorial_warned = true
+		save_data()
+
+func mark_tutorial_done() -> void:
+	if not tutorial_done:
+		tutorial_done = true
+		save_data()
+
 func reset_all() -> void:
 	coroas = 0
 	unlocked_rules.clear()
@@ -136,6 +168,12 @@ func reset_all() -> void:
 	equipped_kit = ""
 	bag.clear()
 	oficina_tour_seen = false
+	tutorial_done = false
+	run_over_tour_seen = false
+	alpha_end_seen = false
+	tutorial_warned = false
+	last_summary = {}
+	reset_run_stats()
 	save_data()
 	changed.emit()
 
@@ -153,9 +191,6 @@ func is_card_unlocked(id: String) -> bool:
 
 func rule_unlock_cost(rule: RuleCard) -> int:
 	return RULE_UNLOCK_COST[clampi(int(rule.rarity), 0, 3)]
-
-func card_unlock_cost(card: ActionCard) -> int:
-	return CARD_UNLOCK_COST[clampi(int(card.rarity), 0, 3)]
 
 # ---- Montes de desbloqueio ----
 # Cartas: um monte por RARIDADE (0..3). Leis: um monte por CATEGORIA (RuleCard.Category).
@@ -282,12 +317,6 @@ func remove_from_bag(t: String, id: String) -> void:
 			save_data()
 			changed.emit()
 			return
-
-func toggle_bag(t: String, id: String) -> bool:
-	if bag_has(t, id):
-		remove_from_bag(t, id)
-		return true
-	return add_to_bag(t, id)
 
 func clear_bag() -> void:
 	coroas += bag_total_paid()

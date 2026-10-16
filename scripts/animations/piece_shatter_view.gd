@@ -31,8 +31,8 @@ func _process(delta: float) -> void:
 		if shard.alpha <= 0.0:
 			expired.append(shard)
 
-	for exp in expired:
-		active_shards.erase(exp)
+	for gone in expired:
+		active_shards.erase(gone)
 
 	queue_redraw()
 

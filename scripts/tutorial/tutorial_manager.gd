@@ -182,23 +182,11 @@ func consume_done_tip() -> String:
 func all_objectives_done() -> bool:
 	return _objectives.is_empty() or _objective_idx >= _objectives.size()
 
-func current_objective_event() -> String:
-	if _objective_idx < _objectives.size():
-		return _objectives[_objective_idx]["event"]
-	return ""
-
 func _emit_current_objective() -> void:
 	if _objective_idx < _objectives.size():
 		var obj: Dictionary = _objectives[_objective_idx]
 		objective_changed.emit(obj["text"], false)
 		objective_started.emit(obj)
-
-# Substitui os objetivos pelos de uma segunda fase da lição (ex.: depois da
-# demonstração forçada de Morte Súbita).
-func set_custom_objectives(list: Array) -> void:
-	_objectives = list
-	_objective_idx = 0
-	_emit_current_objective()
 
 # ---------------------------------------------------------------------
 # Configuração de cada duelo do tutorial

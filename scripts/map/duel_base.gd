@@ -11,12 +11,11 @@ func setup(p_board: Board, p_human_team: int, p_ai_team: int, _sudden_death_mgr:
 	human_team = p_human_team
 	ai_team = p_ai_team
 	captures_by_player = 0
+	if RunManager != null:
+		RunManager.reset_effect_gold()
 
 func apply_board_modifiers() -> void:
 	pass
-
-func get_banner_text() -> String:
-	return ""
 
 # Chamado só quando o JOGADOR captura uma peça (e ela de fato morre) — base
 # do ouro de capturas. Capturas da IA e capturas impedidas não passam por aqui.

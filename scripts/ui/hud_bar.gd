@@ -76,6 +76,7 @@ func _build_side_panel() -> void:
 	# -------------------------------------------------------------------
 	const TOP_ROW_SEPARATION: float = 10.0
 	var top_row = HBoxContainer.new()
+	@warning_ignore("narrowing_conversion")
 	top_row.add_theme_constant_override("separation", TOP_ROW_SEPARATION)
 	top_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	side_container.add_child(top_row)
@@ -374,10 +375,38 @@ func refresh_deck() -> void:
 			# já que não há nada pra mostrar.
 			slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
+var _shown_gold: int = -1
+var _gold_tween: Tween
+
 func update_gold() -> void:
 	var g = RunManager.gold if RunManager != null else 0
-	if gold_label:
+	if gold_label == null:
+		return
+	# Primeira chamada (ou HUD fora da árvore): só mostra, sem animar.
+	if _shown_gold < 0 or not gold_label.is_inside_tree():
+		_shown_gold = g
 		gold_label.text = "%d" % g
+		return
+	var delta: int = g - _shown_gold
+	if delta == 0:
+		gold_label.text = "%d" % g
+		return
+	var from_v: int = _shown_gold
+	_shown_gold = g
+	if _gold_tween != null and _gold_tween.is_valid():
+		_gold_tween.kill()
+	# Contador "rola" até o novo valor (mais rápido quanto menor a diferença).
+	_gold_tween = gold_label.create_tween()
+	_gold_tween.tween_method(func(v: float): gold_label.text = "%d" % int(round(v)),
+		float(from_v), float(g), clampf(0.25 + absf(delta) * 0.004, 0.25, 0.7)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	var anchor: Control = gold_panel_ctrl if gold_panel_ctrl != null else gold_label
+	Juice.pulse(anchor, 1.12 if delta > 0 else 1.06)
+	var up: bool = delta > 0
+	Juice.flash_modulate(gold_label, Color(0.6, 1.0, 0.6) if up else Color(1.0, 0.5, 0.5), 0.5)
+	var pos: Vector2 = gold_label.global_position + Vector2(gold_label.size.x * 0.5, -6.0)
+	Juice.float_text(self, ("+%d" if up else "%d") % delta, pos, Color(0.65, 1.0, 0.55) if up else Color(1.0, 0.5, 0.45), 28)
+	if up:
+		Juice.burst(self, gold_label.global_position + Vector2(-20, 14), Juice.C_GOLD, mini(6 + delta, 16), 130.0, 0.5, 3.0, 260.0, 120.0)
 
 func _on_rule_slot_hovered(idx: int) -> void:
 	if rule_tooltip == null or idx >= _current_rules.size():

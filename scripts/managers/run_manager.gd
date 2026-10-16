@@ -89,7 +89,7 @@ func remove_rule(rule_id: String) -> void:
 	rules_updated.emit()
 
 func start_new_run():
-	gold = 10000
+	gold = 0
 	shop_purchases = 0
 	current_board_size = Vector2i(8, 8)
 	current_node_type = 1
@@ -105,24 +105,41 @@ func start_new_run():
 	# A mochila do Grimório é entregue só pelo botão JOGAR (MetaProgress.consume_bag_into_run).
 	
 
-# DEBUG: começa cada run com UMA cópia de todas as Cartas de Ação do jogo no
-# inventário (para testar). Ponha false para voltar ao baralho inicial normal.
-# Cartas novas entram sozinhas, pois vêm de LootTables.get_all_action_cards().
-const DEBUG_ALL_CARDS: bool = true
+# ==========================
+
+
+# DEBUG: DE TODAS AS CARTAS
+const DEBUG_ALL_CARDS: bool = false
+
+
+# ==========================
 
 func _init_default_deck() -> void:
 	player_deck.clear()
 	if DEBUG_ALL_CARDS:
 		for card in LootTables.get_all_action_cards():
-			# Debug ignora o limite de 20: já são mais cartas do que isso.
+			# Debug ignora o limite de 20.
 			player_deck.append(card)
 		return
-	player_deck.append(CardSecondChance.new())
-	player_deck.append(CardLuckyDuel.new())
-	player_deck.append(CardCoinOfDestiny.new())
 	
 func add_gold(amount: int) -> void:
 	gold += amount
+
+# Ouro vindo de EFEITOS (Leis e Cartas: Carnificina, Vingança, Sacrifício,
+# Retaliação) tem teto por duelo, para não superar o ouro "normal" do duelo
+# (base ~6-12 + capturas/sobreviventes). Devolve quanto realmente entrou.
+const EFFECT_GOLD_CAP_PER_DUEL: int = 8
+var effect_gold_this_duel: int = 0
+
+func reset_effect_gold() -> void:
+	effect_gold_this_duel = 0
+
+func add_effect_gold(amount: int) -> int:
+	var room: int = maxi(0, EFFECT_GOLD_CAP_PER_DUEL - effect_gold_this_duel)
+	var granted: int = mini(amount, room)
+	effect_gold_this_duel += granted
+	gold += granted
+	return granted
 
 func spend_gold(amount: int) -> bool:
 	if gold >= amount:

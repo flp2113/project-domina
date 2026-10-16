@@ -161,6 +161,7 @@ func _build_discard_card(rule: RuleCard) -> PanelContainer:
 
 	var vbox = VBoxContainer.new()
 	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	@warning_ignore("narrowing_conversion")
 	vbox.add_theme_constant_override("separation", CARD_VBOX_SEPARATION)
 	card.add_child(vbox)
 

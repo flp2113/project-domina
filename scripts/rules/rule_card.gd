@@ -40,6 +40,9 @@ var _cost_override: int = -1
 	set(value):
 		_cost_override = value
 @export var incompatible_with: Array[String] = []
+# Lei exclusiva de Chefe: ganha o efeito BossLawFx (brilho, varredura e faíscas)
+# na carta e destaque no tooltip.
+var boss_law: bool = false
 
 func applies_to_team(piece_team: int, human_team: int) -> bool:
 	match scope:

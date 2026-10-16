@@ -20,6 +20,8 @@ const C_CREAM := Color(0.94, 0.9, 0.81)
 # 0 = janela, 1 = janela em tela cheia (sem borda), 2 = tela cheia (exclusiva)
 var display_mode: int = 0
 var resolution: Vector2i = Vector2i(1920, 1080)
+var screen_fx: bool = true   # tremor de tela + hit-stop (Juice.screen_fx)
+var _fx_btn: Button
 
 var _gear_btn: Button
 var _backdrop: ColorRect
@@ -30,6 +32,8 @@ var _res_prev: Button
 var _res_next: Button
 var _exit_btn: Button
 var _exit_armed: bool = false
+var _reset_btn: Button
+var _reset_armed: bool = false
 var _res_list: Array[Vector2i] = []
 var _apply_token: int = 0
 
@@ -58,6 +62,8 @@ func _load_settings() -> void:
 		_sync_mode_from_window()
 		return
 	display_mode = clampi(int(cfg.get_value("display", "mode", 0)), 0, 2)
+	screen_fx = bool(cfg.get_value("display", "screen_fx", true))
+	Juice.screen_fx = screen_fx
 	var r = cfg.get_value("display", "resolution", resolution)
 	if r is Vector2i:
 		resolution = r
@@ -72,6 +78,7 @@ func _save_settings() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("display", "mode", display_mode)
 	cfg.set_value("display", "resolution", resolution)
+	cfg.set_value("display", "screen_fx", screen_fx)
 	cfg.save(SAVE_PATH)
 
 func _apply_display() -> void:
@@ -93,6 +100,7 @@ func _apply_display() -> void:
 			var screen := DisplayServer.window_get_current_screen()
 			var origin := DisplayServer.screen_get_position(screen)
 			var ssize := DisplayServer.screen_get_size(screen)
+			@warning_ignore("integer_division")
 			DisplayServer.window_set_position(origin + (ssize - resolution) / 2)
 		1:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
@@ -209,12 +217,34 @@ func _build_ui() -> void:
 	_res_next.pressed.connect(_on_res_step.bind(1))
 	res_row.add_child(_res_next)
 
+	v.add_child(_section_label("EFEITOS DE TELA (TREMOR E IMPACTO)"))
+	_fx_btn = Button.new()
+	_fx_btn.toggle_mode = true
+	_fx_btn.custom_minimum_size = Vector2(0, 52)
+	_fx_btn.add_theme_font_size_override("font_size", 22)
+	_fx_btn.focus_mode = Control.FOCUS_NONE
+	_fx_btn.pressed.connect(func():
+		screen_fx = not screen_fx
+		Juice.screen_fx = screen_fx
+		_save_settings()
+		_refresh())
+	v.add_child(_fx_btn)
+
 	var hint := Label.new()
 	hint.name = "Hint"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_font_size_override("font_size", 16)
 	hint.add_theme_color_override("font_color", Color(0.6, 0.55, 0.65))
 	v.add_child(hint)
+
+	v.add_child(_section_label("PROGRESSO"))
+	_reset_btn = Button.new()
+	_reset_btn.custom_minimum_size = Vector2(0, 52)
+	_reset_btn.add_theme_font_size_override("font_size", 22)
+	_reset_btn.focus_mode = Control.FOCUS_NONE
+	PixelUI.skin_button(_reset_btn, Color(0.8, 0.3, 0.35))
+	_reset_btn.pressed.connect(_on_reset_pressed)
+	v.add_child(_reset_btn)
 
 	var sep := ColorRect.new()
 	sep.color = Color(0.49, 0.39, 0.54, 0.6)
@@ -259,6 +289,9 @@ func _refresh() -> void:
 		var on := i == display_mode
 		_mode_btns[i].button_pressed = on
 		PixelUI.skin_button(_mode_btns[i], Color(0.3, 0.9, 0.4) if on else Color.WHITE)
+	_fx_btn.button_pressed = screen_fx
+	_fx_btn.text = "LIGADOS" if screen_fx else "DESLIGADOS"
+	PixelUI.skin_button(_fx_btn, Color(0.3, 0.9, 0.4) if screen_fx else Color.WHITE)
 	_res_list = _available_resolutions()
 	_res_label.text = "%d x %d" % [resolution.x, resolution.y]
 	var idx := _res_list.find(resolution)
@@ -268,13 +301,12 @@ func _refresh() -> void:
 	_res_label.modulate = Color.WHITE if can_res else Color(1, 1, 1, 0.4)
 	var hint: Label = _panel.find_child("Hint", true, false)
 	hint.text = "Janela tela cheia usa a resolução do monitor." if display_mode == 1 else ""
-	if Engine.is_embedded_in_editor():
-		hint.text = "Jogo embutido no editor: modo e resolução só valem fora do editor (desative \"Embed Game\")."
-		hint.autowrap_mode = TextServer.AUTOWRAP_WORD
 	var in_menu := _in_main_menu()
 	_exit_btn.visible = not in_menu
 	_exit_armed = false
 	_exit_btn.text = "SAIR PARA O MENU"
+	_reset_armed = false
+	_reset_btn.text = "RESETAR PROGRESSO"
 
 func _in_main_menu() -> bool:
 	var s := get_tree().current_scene
@@ -330,4 +362,21 @@ func _on_exit_pressed() -> void:
 		TutorialManager.end_tutorial()
 	else:
 		MetaProgress.settle_run()  # abandonar a run também paga o que ela rendeu
+	get_tree().call_deferred("change_scene_to_file", MAIN_MENU_PATH)
+
+# Zera TUDO do Grimório (coroas, cartas/leis desbloqueadas, kits, mochila, guia
+# visto) e reinicia o jogo no menu principal. Dois cliques: o primeiro pede
+# confirmação. Mantém as configurações de tela (user://settings.cfg).
+func _on_reset_pressed() -> void:
+	if not _reset_armed:
+		_reset_armed = true
+		_reset_btn.text = "APAGAR TUDO? CLIQUE DE NOVO"
+		return
+	close()
+	if TutorialManager != null and TutorialManager.is_active:
+		TutorialManager.end_tutorial()
+	MetaProgress.reset_all()
+	RunManager.start_new_run()  # descarta a run em andamento (mapa, ouro, baralho, leis)
+	# change_scene_to_file recria o menu do zero (reload_current_scene falharia
+	# se a cena atual fosse a de uma run). Adiado para sair do callback do botão.
 	get_tree().call_deferred("change_scene_to_file", MAIN_MENU_PATH)

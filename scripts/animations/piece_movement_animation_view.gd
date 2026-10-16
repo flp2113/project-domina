@@ -2,6 +2,7 @@ class_name PieceMovementAnimationView
 extends Node2D
 
 signal jump_completed()
+signal landed(center: Vector2, is_capture: bool)
 
 var is_animating: bool = false
 var current_anim_pos: Vector2 = Vector2.ZERO
@@ -38,6 +39,7 @@ func play_move_jump(from_center: Vector2, to_center: Vector2, piece: BoardPiece,
 	, 0.0, 1.0, duration)
 
 	await tween.finished
+	landed.emit(to_center, is_capture)
 
 	is_animating = false
 	active_piece = null

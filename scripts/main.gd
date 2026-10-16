@@ -212,7 +212,18 @@ func _setup_enemy_side() -> void:
 		card_count += 1
 	elif RunManager.ambush_kind == "setup":
 		card_count = maxi(1, card_count - 1)
-	_ai_starting_cards = LootTables.get_ai_starting_deck(card_count)
+	_ai_starting_cards = LootTables.get_ai_starting_deck(card_count, _enemy_card_depth())
+
+# Profundidade do duelo na run (camada do nó; +1 em Duelo Forte; chefe = 7).
+func _enemy_card_depth() -> int:
+	if TutorialManager.is_active or RunManager.current_node == null:
+		return 0
+	var depth: int = RunManager.current_node.id.y
+	if current_duel is DuelBoss:
+		return 7
+	if current_duel is DuelHard:
+		depth += 1
+	return clampi(depth, 1, 7)
 
 # Monta o RulePipeline "ao vivo" do duelo. A fonte da verdade das Leis do
 # jogador é o RunManager (ver comentário lá): este método é chamado de novo
@@ -268,6 +279,7 @@ func _setup_modules(max_dim: int) -> void:
 
 	piece_movement_view = PieceMovementAnimationView.new()
 	add_child(piece_movement_view)
+	piece_movement_view.landed.connect(_on_piece_landed)
 
 	frog_animation_view = FrogBossAnimationView.new()
 	add_child(frog_animation_view)
@@ -474,7 +486,76 @@ func _on_sudden_death_triggered() -> void:
 			and not TutorialManager.duel1_sudden_death_done:
 		TutorialManager.duel1_sudden_death_done = true
 		await tutorial_guide_view.play_sequence(TutorialManager.get_sudden_death_started_lines())
+	if sudden_death_mgr.triggered_by_stall:
+		await _show_impasse_banner()
 	await _resolve_impossible_tie()
+
+# Aviso exclusivo da Morte Súbita por IMPASSE: a palavra gigante pulsando no
+# centro da tela por alguns segundos (a jogada espera acabar).
+const IMPASSE_SHOW_TIME: float = 2.6
+func _show_impasse_banner() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 120
+	add_child(layer)
+
+	var tint := ColorRect.new()
+	tint.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tint.color = Color(0.25, 0.0, 0.03, 0.0)
+	tint.mouse_filter = Control.MOUSE_FILTER_STOP   # bloqueia cliques enquanto o aviso está na tela
+	layer.add_child(tint)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(center)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.add_child(box)
+
+	var word := Label.new()
+	word.text = "IMPASSE"
+	word.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	word.add_theme_font_size_override("font_size", 200)
+	word.add_theme_color_override("font_color", Color(1.0, 0.32, 0.34))
+	word.add_theme_color_override("font_outline_color", Color(0.1, 0.02, 0.04))
+	word.add_theme_constant_override("outline_size", 24)
+	box.add_child(word)
+
+	var sub := Label.new()
+	sub.text = "MORTE SÚBITA"
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.add_theme_font_size_override("font_size", 34)
+	sub.add_theme_color_override("font_color", Color(0.94, 0.9, 0.81))
+	sub.add_theme_color_override("font_outline_color", Color(0.1, 0.02, 0.04))
+	sub.add_theme_constant_override("outline_size", 8)
+	box.add_child(sub)
+
+	box.modulate.a = 0.0
+	await get_tree().process_frame
+	box.pivot_offset = box.size / 2.0
+	box.scale = Vector2(1.6, 1.6)
+
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(tint, "color:a", 0.38, 0.3)
+	tw.tween_property(box, "modulate:a", 1.0, 0.25)
+	tw.tween_property(box, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await tw.finished
+
+	# Pulsa até o fim do tempo.
+	var pulse := create_tween().set_loops()
+	pulse.tween_property(box, "scale", Vector2(1.1, 1.1), 0.32).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	pulse.tween_property(box, "scale", Vector2.ONE, 0.32).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await get_tree().create_timer(IMPASSE_SHOW_TIME).timeout
+	pulse.kill()
+
+	var out := create_tween().set_parallel(true)
+	out.tween_property(tint, "color:a", 0.0, 0.4)
+	out.tween_property(box, "modulate:a", 0.0, 0.4)
+	out.tween_property(box, "scale", Vector2(1.25, 1.25), 0.4)
+	await out.finished
+	layer.queue_free()
 
 # Lei Empate Impossível: ao começar a Morte Súbita, cada time ao qual a Lei
 # se aplica joga 3 moedas; cada moeda que cair na cor do time promove uma peça comum aleatória sua.
@@ -660,7 +741,7 @@ func _is_board_input_blocked() -> bool:
 
 # Atalhos de debug só existem em builds de debug e nunca no tutorial.
 func _can_use_debug_keys() -> bool:
-	return OS.is_debug_build() and not TutorialManager.is_active and not is_starting_match and not is_game_over
+	return DebugFlags.SHORTCUTS and OS.is_debug_build() and not TutorialManager.is_active and not is_starting_match and not is_game_over
 
 func _process(delta: float) -> void:
 	_poll_tutorial_tips(delta)
@@ -721,3 +802,19 @@ func debug_toggle_rule(rule_id: String, make_rule: Callable) -> void:
 		RunManager.remove_rule(rule_id)
 	else:
 		RunManager.add_rule(make_rule.call())
+
+# Juice do duelo. Movimento: poeira + pequena onda no pouso. Captura: clarão na
+# casa, onda grande, faíscas quentes em leque e um tremor curto e discreto.
+func _on_piece_landed(center: Vector2, is_capture: bool) -> void:
+	var g: Vector2 = to_global(center)
+	Juice.dust(self, g, cell_size)
+	if not is_capture:
+		Juice.ring(self, g, cell_size * 0.5, Color(0.85, 0.63, 0.25, 0.9), 3.0, 0.22)
+		return
+	Juice.flash_square(self, g, cell_size, Color(1.0, 0.93, 0.75, 0.85), 0.18)
+	Juice.ring(self, g, cell_size * 0.85, Color(1.0, 0.78, 0.35), 5.0, 0.3)
+	Juice.ring(self, g, cell_size * 0.55, Color(1.0, 0.95, 0.85), 3.0, 0.22)
+	Juice.burst(self, g, Color(0.96, 0.55, 0.18), 24, cell_size * 4.6, 0.55, maxf(5.0, cell_size / 9.0), 520.0, 360.0)
+	Juice.burst(self, g, Color(1.0, 0.92, 0.6), 14, cell_size * 3.2, 0.45, maxf(4.0, cell_size / 12.0), 420.0, 360.0)
+	Juice.shake(self, 2.5, 0.14)
+	Juice.hit_stop(get_tree(), 0.045)

@@ -12,6 +12,19 @@ signal match_finished_by_points(won: bool, message: String)
 # de moedas da Lei do Empate Impossível acabar).
 var just_triggered: bool = false
 
+# Anti-impasse: sobraram poucas peças (ou só Damas) e ninguém captura há várias
+# jogadas — a IA foge e o duelo nunca acabaria. Liga a Morte Súbita (pontos).
+const STALL_PLIES: int = 10          # jogadas seguidas sem mudar o nº de peças
+const STALL_MAX_PIECES: int = 6      # só vale com no máximo isso de peças no tabuleiro...
+# ...ou quando TODAS as peças restantes são Damas (qualquer quantidade).
+# true = as outras condições (1 peça restante, nova Dama) NÃO ligam a Morte
+# Súbita; só o impasse liga. Usado pelo Chefe, que pede eliminação total.
+var stall_only: bool = false
+# true se a Morte Súbita atual foi ligada pelo impasse (main.gd mostra o aviso IMPASSE).
+var triggered_by_stall: bool = false
+var _stall_plies: int = 0
+var _last_piece_total: int = -1
+
 var max_turns: int = 10
 var is_active: bool = false
 var turns_left: int = 6
@@ -29,6 +42,9 @@ func reset() -> void:
 	turns_left = max_turns
 	initial_kings_count = 0
 	pause_ticks = 0
+	_stall_plies = 0
+	_last_piece_total = -1
+	triggered_by_stall = false
 	queue_redraw()
 
 func configure(max_dim: int = 8) -> void:
@@ -41,9 +57,6 @@ func start_immediately() -> void:
 	just_triggered = true
 	sudden_death_triggered.emit()
 	queue_redraw()
-
-func set_initial_kings_baseline(board: Board) -> void:
-	initial_kings_count = _count_total_kings(board)
 
 func _count_total_kings(board: Board) -> int:
 	# Damas "isentas" (Lei da Guarda Real) não contam: senão a Dama inicial
@@ -66,12 +79,61 @@ func check_conditions(board: Board, human_team: int, ai_team: int) -> void:
 
 	var new_king_promoted = current_kings > initial_kings_count
 
-	if human_count == 1 or ai_count == 1 or new_king_promoted:
+	var triggered: bool = false
+	if not stall_only:
+		triggered = human_count == 1 or ai_count == 1 or new_king_promoted
+	if not triggered and _update_stall(board, human_count + ai_count - _count_inert_men(board)):
+		triggered = true
+		triggered_by_stall = true
+	if triggered:
 		is_active = true
 		turns_left = max_turns
 		just_triggered = true
 		sudden_death_triggered.emit()
 		queue_redraw()
+
+# Peças "congeladas": homens (não Damas) parados na última fileira sem nenhum
+# movimento ou captura — acontece quando a Lei da Ascensão barra a promoção.
+# Ficam na borda, ninguém consegue capturá-las e elas não jogam mais, então não
+# podem contar como "peças em jogo" no anti-impasse (senão o duelo nunca fecha).
+func _count_inert_men(board: Board) -> int:
+	var n: int = 0
+	for r in [0, board.rows - 1]:
+		for c in range(board.cols):
+			var p: BoardPiece = board.grid[r][c]
+			if p == Board.EMPTY or p.is_tree or p.is_king:
+				continue
+			var promo_row: int = 0 if p.owner_team == board.human_team_color else board.rows - 1
+			if r != promo_row:
+				continue
+			if board.get_piece_moves(r, c).is_empty() and board.get_piece_captures(r, c).is_empty():
+				n += 1
+	return n
+
+# Conta jogadas seguidas sem captura (o total de peças não muda). Devolve true
+# quando o impasse justifica ligar a Morte Súbita. Fora do tutorial.
+func _update_stall(board: Board, total: int) -> bool:
+	if total != _last_piece_total:
+		_last_piece_total = total
+		_stall_plies = 0
+		return false
+	_stall_plies += 1
+	if TutorialManager != null and TutorialManager.is_active:
+		return false
+	if _stall_plies < STALL_PLIES:
+		return false
+	if total <= STALL_MAX_PIECES:
+		return true
+	# Muitas peças, mas só Damas em campo (fora as congeladas): também é impasse.
+	var only_kings: bool = true
+	for r in range(board.rows):
+		for c in range(board.cols):
+			var p: BoardPiece = board.grid[r][c]
+			if p != Board.EMPTY and not p.is_tree and not p.is_king:
+				var frozen: bool = (r == 0 or r == board.rows - 1) and board.get_piece_moves(r, c).is_empty() and board.get_piece_captures(r, c).is_empty() and r == (0 if p.owner_team == board.human_team_color else board.rows - 1)
+				if not frozen:
+					only_kings = false
+	return only_kings
 
 # Assíncrona: aguarde (await) — a contagem visual roda antes do resultado.
 func process_turn_end(board: Board, human_team: int, ai_team: int) -> bool:

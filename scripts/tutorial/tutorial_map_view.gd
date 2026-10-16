@@ -116,6 +116,7 @@ func _ready() -> void:
 			await _guide_walks_ahead()
 			await guide_view.play_sequence(TutorialManager.get_flip_lines())
 		TutorialManager.advance_to(TutorialManager.Step.FINISHED)
+		MetaProgress.mark_tutorial_done()
 		TutorialManager.end_tutorial()
 		SceneTransition.go(MAIN_MENU_PATH)
 		return
@@ -124,6 +125,7 @@ func _ready() -> void:
 		# Perdeu o duelo — fica no mesmo nó pra tentar de novo, em vez
 		# de liberar o próximo como se tivesse vencido.
 		status_label.text = TutorialManager.get_retry_hint(TutorialManager.current_step)
+		top_panel.visible = true
 		_refresh_button_states()
 		return
 
@@ -314,6 +316,9 @@ func _setup_ui() -> void:
 	top_panel.add_theme_stylebox_override("panel", sb)
 	canvas.add_child(top_panel)
 	top_panel.offset_top = 10.0
+	# Cabeçalho (título/progresso/dica) removido: só reaparece com a dica de
+	# "tentar de novo" depois de perder um duelo do tutorial.
+	top_panel.visible = false
 
 	var top_box = VBoxContainer.new()
 	top_box.alignment = BoxContainer.ALIGNMENT_CENTER

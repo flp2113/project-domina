@@ -5,7 +5,7 @@ func _init() -> void:
 	id = "retaliation"
 	icon_path = "res://assets/sprites/cards/icons/retaliation.png"
 	name = "Retaliacao"
-	description = "So pode ser jogada se voce perdeu uma peca no ultimo turno. Concede +3 de Ouro e coroa uma peca sua."
+	description = "So pode ser jogada se voce perdeu uma peca no ultimo turno. Concede +4 de Ouro e coroa uma peca sua."
 	rarity = Rarity.EPIC
 	target_type = TargetType.ALLY_PIECE
 
@@ -15,7 +15,7 @@ func can_play(_board: Board, _human_team: int, context: Dictionary = {}) -> bool
 
 func execute(board: Board, target_pos: Vector2i, _human_team: int, _context: Dictionary = {}) -> void:
 	if RunManager != null:
-		RunManager.gold += 3
+		RunManager.add_effect_gold(4)
 	var piece: BoardPiece = board.grid[target_pos.y][target_pos.x]
 	if piece != Board.EMPTY:
 		piece.is_king = true

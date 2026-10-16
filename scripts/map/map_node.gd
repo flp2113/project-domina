@@ -7,9 +7,9 @@ enum NodeType {
 	DueloForte,
 	Evento,
 	Loja,
-	Melhoria,
 	Chefe,
-	Aposta
+	Aposta,
+	Altar
 }
 
 var id: Vector2i

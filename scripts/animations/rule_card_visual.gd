@@ -118,6 +118,11 @@ func _build_card() -> void:
 	back_view.visible = not is_face_up
 	front_view.visible = is_face_up
 
+	if rule != null and rule.boss_law:
+		var fx := BossLawFx.new(scaled_size)
+		fx.position = -card_root.pivot_offset
+		card_root.add_child(fx)
+
 func _build_flat_panel(bg_color: Color, border_color: Color, panel_size: Vector2) -> Control:
 	var p = PanelContainer.new()
 	p.custom_minimum_size = panel_size
@@ -248,6 +253,7 @@ func play_flip_reveal(delay: float = 0.0) -> void:
 	_play_flip_reveal(delay, 0.18, 0.22)
 
 func _on_mouse_entered() -> void:
+	_hover_juice(true)
 	if not is_face_up or tooltip_ref == null or rule == null:
 		return
 	# "size" já inclui o display_scale (CardVisualBase monta o card_root no
@@ -257,5 +263,26 @@ func _on_mouse_entered() -> void:
 	tooltip_ref.show_tooltip(rule, screen_pos)
 
 func _on_mouse_exited() -> void:
+	_hover_juice(false)
 	if tooltip_ref != null:
 		tooltip_ref.hide_tooltip()
+
+# Juice: a carta sobe um pouco e inclina seguindo o mouse (só posição/rotação do
+# card_root; o flip usa scale:x, então não conflita).
+var _hover_tween: Tween
+
+func _hover_juice(entered: bool) -> void:
+	if card_root == null:
+		return
+	if _hover_tween != null and _hover_tween.is_valid():
+		_hover_tween.kill()
+	var lift: float = _card_size.y * 0.04
+	_hover_tween = create_tween().set_parallel(true)
+	_hover_tween.tween_property(card_root, "position:y", (_card_size.y / 2.0) - (lift if entered else 0.0), 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if not entered:
+		_hover_tween.tween_property(card_root, "rotation", 0.0, 0.14).set_trans(Tween.TRANS_SINE)
+
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion and is_face_up and card_root != null and (_hover_tween == null or not _hover_tween.is_running()):
+		var nx: float = clampf((get_local_mouse_position().x / maxf(size.x, 1.0)) - 0.5, -0.5, 0.5)
+		card_root.rotation = lerpf(card_root.rotation, nx * 0.09, 0.35)

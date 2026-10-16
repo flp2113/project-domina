@@ -74,7 +74,14 @@ func show_tooltip(rule: RuleCard, screen_pos: Vector2) -> void:
 
 	title_label.text = rule.name.to_upper()
 	category_label.text = "[ %s ]" % RuleCard.get_category_name(rule.category)
-	category_label.add_theme_color_override("font_color", cat_color)
+	if rule.boss_law:
+		category_label.text = "[ LEI DE CHEFE ]  ✦  " + category_label.text
+		cat_color = BossLawFx.BOSS_COLOR
+		category_label.add_theme_color_override("font_color", cat_color)
+		divider.color = Color(cat_color.r, cat_color.g, cat_color.b, 0.9)
+		panel.add_theme_stylebox_override("panel", PixelUI.make_pixel_panel(Color(0.10, 0.05, 0.14, 0.98), cat_color, 18))
+	if not rule.boss_law:
+		category_label.add_theme_color_override("font_color", cat_color)
 	desc_label.text = rule.description
 
 	panel.modulate = Color.TRANSPARENT

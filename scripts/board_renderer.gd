@@ -20,6 +20,7 @@ var _mist_tex: GradientTexture2D = null
 
 func setup(p_host: Node2D) -> void:
 	host = p_host
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 func _process(_delta: float) -> void:
 	queue_redraw()
@@ -156,20 +157,27 @@ func _draw() -> void:
 
 	_draw_night_and_status(board, board_offset, cell_size)
 
-# Terra Queimada: chamas animadas sobre as casas em fogo.
+# Terra Queimada: chamas animadas (spritesheet 8 frames de 64x64, loop a 8 fps)
+# sobre as casas em fogo. Cada casa começa num frame diferente pra não piscarem
+# em uníssono.
+const FIRE_SHEET: String = "res://assets/sprites/fx/chama_sheet.png"
+const FIRE_FRAMES: int = 8
+const FIRE_FRAME_PX: int = 64
+const FIRE_FPS: float = 8.0
+var _fire_tex: Texture2D = null
+
 func _draw_fire_tiles(board: Board, board_offset: Vector2, cell_size: float) -> void:
+	if _fire_tex == null and ResourceLoader.exists(FIRE_SHEET):
+		_fire_tex = load(FIRE_SHEET)
 	var t = Time.get_ticks_msec() / 1000.0
 	for pos in board.fire_tiles.keys():
 		var rect = Rect2(board_offset.x + pos.x * cell_size, board_offset.y + pos.y * cell_size, cell_size, cell_size)
-		draw_rect(rect, Color(0.75, 0.15, 0.08, 0.38 + 0.08 * sin(t * 6.0 + pos.x + pos.y)))
-		for k in range(3):
-			var ph = t * 5.0 + k * 2.1 + pos.x * 1.3 + pos.y * 0.7
-			var h = cell_size * (0.34 + 0.12 * sin(ph))
-			var bx = rect.position.x + cell_size * (0.2 + 0.3 * k)
-			var by = rect.end.y - cell_size * 0.08
-			var w = cell_size * 0.2
-			draw_colored_polygon(PackedVector2Array([Vector2(bx, by), Vector2(bx + w, by), Vector2(bx + w * 0.5 + sin(ph * 1.3) * 3.0, by - h)]), Color(0.95, 0.45, 0.1, 0.9))
-			draw_colored_polygon(PackedVector2Array([Vector2(bx + w * 0.25, by), Vector2(bx + w * 0.75, by), Vector2(bx + w * 0.5, by - h * 0.55)]), Color(1.0, 0.85, 0.3, 0.95))
+		# Brasa escura sob as chamas: a casa fica avermelhada e legível.
+		draw_rect(rect, Color(0.45, 0.1, 0.08, 0.5 + 0.06 * sin(t * 6.0 + pos.x + pos.y)))
+		if _fire_tex != null:
+			var f: int = (int(t * FIRE_FPS) + pos.x * 3 + pos.y * 5) % FIRE_FRAMES
+			var src := Rect2(f * FIRE_FRAME_PX, 0, FIRE_FRAME_PX, FIRE_FRAME_PX)
+			draw_texture_rect_region(_fire_tex, rect, src)
 		PixelRenderer.draw_pixel_corners(self, rect, Color(1.0, 0.55, 0.1, 0.95), 8.0, 2.5)
 
 # Marcas de status na peça: bolha azul = escudo (Lei do Luto); grade violeta = imobilizada (Emboscada);

@@ -5,11 +5,6 @@ extends RefCounted
 # é o único arquivo para editar texto. O TutorialManager só guarda o estado e
 # repassa para estas funções (os nomes get_* são os mesmos).
 #
-# Objetivos aceitam campos extras: "dim" (0..1, escurecimento do destaque; 0 = só
-# a moldura, sem escurecer — use quando o jogador precisa agir no tabuleiro),
-# "idle_tip" + "idle_spot" (dica e moldura que aparecem se o jogador ficar
-# parado um tempo sem cumprir o objetivo).
-#
 # Formato de uma fala: String simples, ou Dictionary com:
 #   "t"       texto
 #   "spot"    id de um trecho da tela a destacar (ex.: "board", "law_board", "hand")
@@ -58,10 +53,8 @@ static func get_objectives(step: int) -> Array:
 				{"event": "capture", "text": "Pule sobre a peça inimiga",
 				"spot": "cell:5,2", "caption": "PULE PARA CÁ",
 				"done_tip": "Capturada! A peça inimiga saiu do tabuleiro. Se houvesse outro salto na sequência, você continuaria no mesmo turno."},
-				{"event": "promotion", "text": "MOVA suas peças até a última fileira (a de cima)",
-				"spot": "row:0", "caption": "CHEGUE AQUI", "dim": 0.0,
-				"idle_tip": "Clique em uma peça sua e depois numa casa vazia na diagonal, indo para cima. Repita até chegar na fileira dourada.",
-				"idle_spot": "board",
+				{"event": "promotion", "text": "Leve uma peça até a última fileira",
+				"spot": "row:0", "caption": "FILEIRA DE COROAÇÃO",
 				"done_tip": "Coroada! A Dama anda e captura para os dois lados — e vale mais pontos."},
 				{"event": "duel_won", "text": "Vença o duelo", "spot": "", "caption": "",
 				"done_tip": ""},
@@ -89,10 +82,8 @@ static func get_objectives(step: int) -> Array:
 				{"event": "card_used", "text": "Use a Carta (clique no alvo, se pedir um)",
 				"spot": "", "caption": "",
 				"done_tip": "Perfeito! A Carta usada vai para o descarte até o fim do duelo."},
-				{"event": "law_triggered", "text": "MOVA uma peça (um passo simples) e veja sua Lei agir",
-				"spot": "law_board", "caption": "ELA AGE QUANDO VOCÊ MOVER", "dim": 0.0,
-				"idle_tip": "Clique em uma peça sua e ande uma casa na diagonal. Sua Lei de Segundo Movimento vai agir logo depois.",
-				"idle_spot": "board",
+				{"event": "law_triggered", "text": "Faça um passo simples e veja sua Lei agir",
+				"spot": "law_board", "caption": "SUAS LEIS",
 				"done_tip": ""},
 				{"event": "duel_won", "text": "Vença o duelo", "spot": "", "caption": "",
 				"done_tip": ""},
@@ -116,26 +107,25 @@ static func get_objectives(step: int) -> Array:
 
 static func get_intro_lines() -> Array:
 	return [
-		"Olá! Eu sou o Guia — pode me chamar assim, ou só de 'aquela Dama estranha que fala'.",
+		"Olá! Eu sou o Guia e vou te ensinar os básicos desse mundo.",
 		"Vou te acompanhar em 4 lições curtas: regras, Loja, Cartas e Leis, e Apostas.",
-		"Aqui você aprende fazendo, e nada conta para a sua run real. Se já conhece algo, use PULAR em qualquer fala.",
 		"Para começar, siga a trilha: clique no nó brilhante do mapa.",
 	]
 
 static func get_duel1_intro_lines() -> Array:
 	return [
-		{"t": "Esta é a sua primeira partida. A moeda decidiu: você joga com as BRANCAS, embaixo, e começa.", "spot": "board"},
+		{"t": "Esta é seu primeiro duelo, os duelos sempre começam com uma peça decidindo que lado você irá jogar. Dessa vez será com as brancas, que sempre começam primeiro", "spot": "board"},
 		{"t": "Peças andam na diagonal, uma casa por vez, sempre para frente. Capturar é pular sobre uma peça inimiga que tenha uma casa vazia logo atrás.", "spot": "board"},
 		{"t": "Se existir uma captura, ela é OBRIGATÓRIA. A peça que pode capturar ganha um contorno amarelo pulsante — como esta.", "spot": "cell:3,4", "caption": "CAPTURA OBRIGATÓRIA"},
-		{"t": "Chegando à última fileira inimiga, a peça vira uma Dama: anda e captura para trás também.", "spot": "row:0", "caption": "FILEIRA DE COROAÇÃO"},
-		"Vou te guiar passo a passo. Siga os OBJETIVOS no canto da tela!",
+		{"t": "Chegando à última fileira inimiga, a peça é virada ao contrário se transformando em uma Dama que anda quantas casas quiser e captura para trás também.", "spot": "row:0", "caption": "FILEIRA DE COROAÇÃO"},
+		"Vou te guiar passo a passo. Acompanhe os OBJETIVOS no canto da tela!",
 	]
 
 static func get_sudden_death_started_lines() -> Array:
 	return [
-		{"t": "Opa, o relógio apareceu: é a MORTE SÚBITA! Ela começa quando alguém coroa uma Dama ou quando um lado fica com só 1 peça.", "spot": "sd_clock", "caption": "TURNOS RESTANTES"},
-		"Quando os turnos acabam, vence quem tiver mais PONTOS em peças. Peça comum vale 1; Dama vale mais.",
-		"Então agora vale decidir: jogar rápido e seguro, ou arriscar para vencer antes do tempo acabar. Boa!",
+		{"t": "Opa, o contador apareceu: é a MORTE SÚBITA! Ela começa quando alguém coroa uma Dama ou quando um lado fica com só 1 peça.", "spot": "sd_clock", "caption": "TURNOS RESTANTES"},
+		"Quando os turnos acabam, vence quem tiver mais PONTOS em peças. Peça comum vale 1; Dama vale 3.",
+		"Então agora vale decidir: jogar rápido e seguro, ou arriscar para vencer antes do tempo acabar.",
 	]
 
 # Mostrado quando o jogador vence o Duelo 1 SEM ter passado pela Morte Súbita:
@@ -162,9 +152,9 @@ static func get_shop_intro_lines() -> Array:
 
 static func get_shop_lines() -> Array:
 	return [
-		{"t": "Bem-vindo à Loja! Aqui está o seu OURO. Repare nele: cada compra diminui o valor.", "spot": "gold", "caption": "SEU OURO"},
-		{"t": "No alto ficam as LEIS: são permanentes e mudam as regras da run inteira — como uma habilidade sempre ligada.", "spot": "laws_row", "caption": "LEIS"},
-		{"t": "Embaixo, as CARTAS DE AÇÃO: você escolhe quando usar durante um duelo, e cada uma é gasta ao usar.", "spot": "cards_row", "caption": "CARTAS"},
+		{"t": "Bem-vindo à Loja! Aqui está o seu OURO.", "spot": "gold", "caption": "SEU OURO"},
+		{"t": "No alto ficam as LEIS: são permanentes e mudam as regras da run inteira — como uma habilidade passiva que está sempre ligada.", "spot": "laws_row", "caption": "LEIS"},
+		{"t": "Embaixo, são as CARTAS DE AÇÃO: você escolhe quando usar durante um duelo, só podendo usar apenas uma vez por duelo.", "spot": "cards_row", "caption": "CARTAS"},
 		{"t": "REROLL troca as Cartas à venda (as Leis não mudam). REMOVER tira uma Carta do seu baralho — útil para deixá-lo mais afiado.", "spot": "shop_tools"},
 		"Você pode ter até 6 Leis ao mesmo tempo. Com o quadro cheio, comprar outra pede que você escolha uma para descartar.",
 		"Hora de comprar! Primeiro a Lei Segundo Movimento, depois pelo menos uma Carta. Vamos usá-las no próximo duelo.",
@@ -189,10 +179,10 @@ static func get_bet_intro_lines() -> Array:
 	return [
 		{"t": "Chegamos à Mesa de Apostas! Aqui o ouro vai para a sorte.", "spot": "gold"},
 		"A moeda tem dois lados: uma peça comum BRANCA e uma peça comum PRETA. Se cair o lado que você chamou, você ganha.",
-		{"t": "Primeiro escolha o que arriscar. Com ouro, se acertar você ganha 80% a mais do valor apostado — e só dá para apostar metade do seu ouro, uma vez por visita.", "spot": "bet_gold", "caption": "ARRISQUE OURO"},
+		{"t": "Primeiro escolha o que arriscar. Com ouro, se acertar você ganha 80% a mais do valor apostado — e só dá para apostar até metade do seu ouro por vez. Na run de verdade você pode apostar quantas vezes quiser.", "spot": "bet_gold", "caption": "ARRISQUE OURO"},
 		{"t": "Também dá para arriscar uma Carta ou uma Lei sua por uma versão melhor. Vale quando o item é fraco.", "spot": "bet_special"},
 		"Depois você chama BRANCA ou PRETA. As Cartas e Leis de moeda dos duelos usam a mesma ideia: o efeito bom vale para quem joga com a COR que cair.",
-		"Aposta é opcional na run de verdade — mas aqui, vamos treinar uma. Arrisque o menor valor!",
+		"Aposta é opcional na run de verdade — mas aqui, vamos treinar uma rodada. Arrisque o menor valor!",
 	]
 
 # Antes do Guia se despedir: como ler o mapa de verdade.
@@ -213,14 +203,14 @@ static func get_flip_walk_lines() -> Array:
 # A virada ACIDENTAL: o Guia chega na última fileira e é coroado sem querer.
 static func get_flip_lines() -> Array:
 	return [
-		{"crown": true, "t": "Ué?! Tem uma COROA na minha cabeça?! Eu só cheguei na última fileira... Eu não queria ser coroado!", "shake": 0.3},
-		{"t": "Claro... peça que chega na última fileira vira Dama. E Dama é só uma peça comum... VIRADA. O mesmo disco, de ponta-cabeça.", "shake": 0.2},
-		{"t": "Hm? Por que o chão está girando...?", "shake": 0.4},
-		{"t": "Espera... NÃO! Foi sem querer! Eu estou sendo... VIRADO?! Isso não estava no roteiro!", "shake": 0.8},
+		{"crown": true, "t": "Ué?! Estou sendo coroado?! Eu cheguei na última fileira... Eu não queria ser coroado!", "shake": 0.3},
+		{"t": "Claro... peça que chega na última fileira vira Dama. E Dama é só uma peça comum... VIRADA AO CONTRÁRIO", "shake": 0.2},
+		{"t": "ELE NÃO...", "shake": 0.4},
+		{"t": "Espera... NÃO! Foi sem querer! Eu estou sendo... VIRADO!", "shake": 0.8},
 		{"flip": "evil", "t": "MUAHAHAHA!!! O GUIA SE COROOU SEM QUERER E A DAMA CAIU DO MEU LADO! Séculos esperando por esse acidente!", "shake": 1.0},
-		{"who": "evil", "t": "Eu sou o IRMÃO do Guia. Ele é o lado de cima. Fofo. EU SOU O LADO DE BAIXO. MALVADO. Muito. Mas MUITO malvado.", "shake": 0.8},
-		{"who": "evil", "t": "Já furei fila de padaria. NUNCA devolvo o carrinho do mercado. Deixo TODO MUNDO no 'visualizado'. E pisei de propósito num Lego. DESCALÇO. NO ESCURO!", "shake": 1.0},
-		{"who": "evil", "t": "TREME, JOGADOR! Cuidado com cada peça que você levar até a última fileira... MUAHAHAHAHAHA!!!", "shake": 1.0},
+		{"who": "evil", "t": "Eu sou o IRMÃO do Guia. Ele é o lado de cima. Fofo. EU SOU O LADO DE BAIXO. MALVADO. Muito. Mas MUITO malvado MUSHUSMHUAAHAHAHAHAHMUHAHAHAHAMAUHAHAUAUMAAHUAAMUAHAUHAHAHAMAUHAHAUAHAUAUHUAMAUHAHAHAHUHAAMAUAHUAAUHAUAMAUHUAHAUAMAUHAUHAMAAJNAUHAMAUHAUHAMAUHAUAMUAHUANAUHAUHAUAMUAHUAHUAMAUHAUHAUU.", "shake": 0.8},
+		{"who": "evil", "t": "Você conhece a regra da captura obrigatória? EU FUI QUE FIZ! E NEM GOSTO DELA!", "shake": 1.0},
+		{"who": "evil", "t": "TREMA DIANTE MINHA MALDADE JOGADOR! MUAHAHAHAHAHAAHAAHHAHAHAHA!!! sim seu sou o vilão final >:p", "shake": 1.0},
 	]
 
 static func get_finished_lines() -> Array:

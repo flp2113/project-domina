@@ -378,7 +378,7 @@ func _cleanup_drag_state() -> void:
 	for child in cards_root.get_children():
 		child.modulate = Color.WHITE
 
-func cancel_selection(emit_signal: bool = true) -> void:
+func cancel_selection(notify: bool = true) -> void:
 	if selected_card_idx == -1 and not is_dragging and drag_potential_card == null:
 		return
 
@@ -389,5 +389,5 @@ func cancel_selection(emit_signal: bool = true) -> void:
 	if card_tooltip:
 		card_tooltip.hide_tooltip()
 
-	if emit_signal:
+	if notify:
 		card_selection_cancelled.emit()

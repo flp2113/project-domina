@@ -136,7 +136,7 @@ static var _front_texture_cache: Texture2D = null
 # pro panel_style original (cor sólida) se a textura não existir, então
 # nunca quebra mesmo sem o arquivo. Sempre neutra — a cor de categoria/
 # raridade vem da CAMADA DE BORDA separada (ver _build_border_overlay).
-func _get_front_stylebox(fallback_style: StyleBoxFlat, scale_factor: float) -> StyleBox:
+func _get_front_stylebox(fallback_style: StyleBoxFlat, _scale_factor: float) -> StyleBox:
 	if _front_texture_cache == null:
 		if ResourceLoader.exists(_FRONT_TEXTURE_PATH):
 			_front_texture_cache = load(_FRONT_TEXTURE_PATH)
@@ -191,7 +191,7 @@ func _build_border_overlay(border_slug: String, card_size: Vector2, _scale_facto
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return rect
 
-func _build_text_face(card_size: Vector2, title_text: String, description_text: String, accent_color: Color, custom_icon_path: String, generic_icon_path: String, panel_style: StyleBoxFlat, seal_shape: String = "diamond", title_color: Color = Color(1.0, 0.94, 0.55), scale_factor: float = 1.0, border_slug: String = "") -> Control:
+func _build_text_face(card_size: Vector2, title_text: String, description_text: String, accent_color: Color, _custom_icon_path: String, _generic_icon_path: String, panel_style: StyleBoxFlat, _seal_shape: String = "diamond", title_color: Color = Color(1.0, 0.94, 0.55), scale_factor: float = 1.0, border_slug: String = "") -> Control:
 	var front_stylebox = _get_front_stylebox(panel_style, scale_factor)
 
 	# Quando a textura de papel está ativa, "root" fica RECUADO pra dentro

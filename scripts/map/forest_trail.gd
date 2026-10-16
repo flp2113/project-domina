@@ -58,10 +58,12 @@ static func build_steps(from_g: Vector2i, to_g: Vector2i) -> Array[Vector2i]:
 	var n_d = mini(absi(dx), rows)
 	var n_v = rows - n_d
 	var diag = Vector2i(1 if dx > 0 else -1, -1)
+	@warning_ignore("integer_division")
 	for i in range(n_v / 2):
 		steps.append(Vector2i(0, -1))
 	for i in range(n_d):
 		steps.append(diag)
+	@warning_ignore("integer_division")
 	for i in range(n_v - n_v / 2):
 		steps.append(Vector2i(0, -1))
 	return steps

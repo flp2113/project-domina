@@ -115,14 +115,16 @@ static func _make_texture(w: int, h: int) -> ImageTexture:
 		d += noise.get_noise_1d(float(x)) * 5.0
 		depth.append(maxi(3, int(round(d))) + 3)
 	# Estalactites.
+	@warning_ignore("integer_division")
 	var n_stal: int = maxi(6, w / 14)
 	for i in range(n_stal):
 		var cx: int = rng.randi_range(8, w - 9)
-		var len: int = rng.randi_range(5, 13)
+		var seg_len: int = rng.randi_range(5, 13)
 		var half_w: int = rng.randi_range(1, 3)
 		for dx in range(-half_w, half_w + 1):
 			var x: int = cx + dx
-			var ext: int = len - absi(dx) * (len / (half_w + 1))
+			@warning_ignore("integer_division")
+			var ext: int = seg_len - absi(dx) * (seg_len / (half_w + 1))
 			depth[x] = mini(h - 2, maxi(depth[x], depth[cx] + ext - 2))
 	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
 	for x in range(w):
@@ -163,6 +165,7 @@ static func _make_texture(w: int, h: int) -> ImageTexture:
 					outlined.set_pixel(x, y, C_OUTLINE)
 	img = outlined
 	# Cristais violeta pendurados / espetados na rocha.
+	@warning_ignore("integer_division")
 	for i in range(maxi(3, w / 40)):
 		var cx2: int = rng.randi_range(12, w - 13)
 		var y0: int = depth[cx2] - 1

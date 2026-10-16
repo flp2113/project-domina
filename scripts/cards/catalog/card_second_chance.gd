@@ -17,8 +17,8 @@ func execute(board: Board, _target_pos: Vector2i, human_team: int, context: Dict
 	var opponent_team = Board.WHITE + Board.BLACK - human_team
 
 	if not ("card_coin_flip_view" in main_node) or main_node.card_coin_flip_view == null:
-		var team_to_grant = human_team if randi() % 2 == 0 else opponent_team
-		main_node.extra_turns_by_team[team_to_grant] = main_node.extra_turns_by_team.get(team_to_grant, 0) + 1
+		var instant_team = human_team if randi() % 2 == 0 else opponent_team
+		main_node.extra_turns_by_team[instant_team] = main_node.extra_turns_by_team.get(instant_team, 0) + 1
 		return
 
 	main_node.is_resolving_card_effect = true

@@ -9,7 +9,7 @@ func _init() -> void:
 	rarity = Rarity.EPIC
 	target_type = TargetType.NONE
 
-func can_play(_board: Board, human_team: int, _context: Dictionary = {}) -> bool:
+func can_play(_board: Board, _human_team: int, _context: Dictionary = {}) -> bool:
 	# Nao empilha: ja existe uma moeda viciada esperando.
 	return CoinFlipView.rigged_team == 0
 

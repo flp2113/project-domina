@@ -23,10 +23,3 @@ func _draw() -> void:
 		return
 	var center = size / 2.0
 	PixelRenderer.draw_piece(self, piece, center, cell_size, 1.0)
-
-# Cria a peça especial do Guia — uma Dama com cor própria (nem branca nem
-# preta), pra ficar visualmente distinta de qualquer time em jogo.
-static func make_guide_piece() -> BoardPiece:
-	var guide_piece = BoardPiece.new(Board.WHITE, true)
-	guide_piece.color_override = Color(0.62, 0.42, 0.85)
-	return guide_piece

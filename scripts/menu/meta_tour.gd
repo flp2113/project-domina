@@ -20,24 +20,29 @@ const GAP: float = 30.0
 # target: "coroas" | "tabs" | "grid" | "side" | "" ; place: onde fica a caixa em relação ao alvo
 # ("below" | "left" | "inside" | "center"); tab: -1 mantém, 0 Leis, 1 Cartas, 2 Kits
 const STEPS: Array[Dictionary] = [
-	{"text": "Bem-vindo ao GRIMÓRIO! Aqui o que você conquista em uma run vira poder para as próximas. Veja como funciona.",
+	{"text": "Bem-vindo ao GRIMÓRIO! Aqui você usa as COROAS para desbloquear Leis e Cartas novas, que passam a poder aparecer nas suas próximas runs.",
 		"target": "", "place": "center", "tab": 0},
-	{"text": "Estas são as suas COROAS, a moeda do Grimório. Diferente do ouro, elas NÃO somem quando a run acaba: você ganha Coroas vencendo duelos (e muito mais ao derrotar o Chefe), mesmo se perder ou desistir.",
-		"target": "coroas", "place": "below", "tab": -1},
-	{"text": "Estes são os MONTES de LEIS, um por categoria. Pague Coroas para abrir um monte e descobrir uma Lei ainda bloqueada dele. Quanto mais raras as Leis que restam no monte, mais caro ele fica. Só o que está liberado aparece na loja, nas recompensas e nos eventos das suas runs.",
-		"target": "grid", "place": "inside", "tab": 0},
-	{"text": "As CARTAS funcionam igual, mas os montes são por RARIDADE: comum, rara, épica e lendária. Abrir um monte sorteia uma carta bloqueada daquela raridade. Embaixo ficam as já liberadas; passe o mouse sobre uma carta para ler os detalhes.",
-		"target": "grid", "place": "inside", "tab": 1},
-	{"text": "Nas peças liberadas, o botão LEVAR coloca a carta ou a Lei na sua MOCHILA: a próxima run já começa com ela. O preço depende da raridade e você paga A CADA RUN. Clique de novo para tirar e receber as Coroas de volta.",
+	{"text": "Estas são as suas COROAS. Você ganha Coroas vencendo duelos, e mesmo que perca a run, as que ganhou continuam com você.",
+		"target": "coroas", "place": "below", "tab": 0},
+	{"text": "Esta aba guarda as LEIS. Cada monte de cartas virado para baixo esconde uma Lei que você ainda não conhece.",
+		"target": "piles", "place": "below", "tab": 0},
+	{"text": "Para abrir um monte, clique nele e pague com Coroas. A Lei que sair fica desbloqueada para sempre e passa a poder aparecer nas suas runs.",
+		"target": "piles", "place": "below", "tab": 0},
+	{"text": "A aba de CARTAS funciona do mesmo jeito, mas cada monte é de uma raridade: comum, rara, épica ou lendária. Quanto mais rara, mais Coroas ela custa.",
+		"target": "piles", "place": "below", "tab": 1},
+	{"text": "Depois de desbloquear algo, você pode LEVAR para a MOCHILA. O que estiver na mochila já começa a próxima run com você.",
 		"target": "side", "place": "left", "tab": 1},
-	{"text": "Cuidado: cada item que já está na mochila encarece o próximo. Começar a run com o inventário cheio sai bem caro! As Coroas só são gastas de verdade quando você aperta JOGAR.",
+	{"text": "Levar custa Coroas a cada run, e cada item na mochila deixa o próximo mais caro. Escolha com cuidado o que vale a pena levar.",
 		"target": "side", "place": "left", "tab": 1},
-	{"text": "Os KITS são conjuntos prontos: uma Lei e duas cartas que combinam. Comprar um kit libera as peças dele e levar um kit na mochila custa menos que levar as três peças separadas.",
+	{"text": "Na aba de KITS ficam conjuntos prontos de itens, com preço menor do que comprar tudo separado.",
 		"target": "grid", "place": "inside", "tab": 2},
-	{"text": "É isso! Junte Coroas jogando, volte aqui e monte sua largada ideal. Se quiser rever este guia, clique no botão \"?\" no canto da tela.",
-		"target": "", "place": "center", "tab": 0},
+	{"text": "É isso! Se quiser rever este guia depois, clique no botão \"?\" do Grimório.",
+		"target": "", "place": "center", "tab": -1},
 ]
 
+# Passos do guia: por padrão os do Grimório; outras telas (ex.: fim de run)
+# trocam por uma lista própria antes de chamar start().
+var steps: Array[Dictionary] = STEPS
 var target_provider: Callable
 var tab_switcher: Callable
 
@@ -122,23 +127,23 @@ func start() -> void:
 
 func _advance() -> void:
 	_step += 1
-	if _step >= STEPS.size():
+	if _step >= steps.size():
 		_finish()
 		return
-	var s: Dictionary = STEPS[_step]
+	var s: Dictionary = steps[_step]
 	if int(s["tab"]) >= 0 and tab_switcher.is_valid():
 		tab_switcher.call(int(s["tab"]))
 	# Espera o Grimório reconstruir a aba antes de medir o alvo.
 	await get_tree().process_frame
 	await get_tree().process_frame
-	if not visible or _step >= STEPS.size():
+	if not visible or _step >= steps.size():
 		return
 	_rect = Rect2()
 	if str(s["target"]) != "" and target_provider.is_valid():
 		_rect = target_provider.call(str(s["target"]))
 	_text.text = s["text"]
-	_count.text = "%d/%d" % [_step + 1, STEPS.size()]
-	_next_btn.text = "ENTENDIDO" if _step == STEPS.size() - 1 else "PRÓXIMO"
+	_count.text = "%d/%d" % [_step + 1, steps.size()]
+	_next_btn.text = "ENTENDIDO" if _step == steps.size() - 1 else "PRÓXIMO"
 	_panel.reset_size()
 	await get_tree().process_frame
 	_place_panel(str(s.get("place", "center")))
@@ -158,6 +163,14 @@ func _place_panel(place: String) -> void:
 				pos.x = clampf(pos.x, 20.0, vp.x - sz.x - 20.0)
 				var tip := Vector2(clampf(r.get_center().x, pos.x + 40.0, pos.x + sz.x - 40.0), r.end.y + FRAME_PAD + 4.0)
 				_set_arrow(tip, Vector2(0, -1), pos, sz)
+			"above":
+				# Caixa acima do alvo (alvos perto da borda de baixo da tela).
+				pos = Vector2(r.get_center().x - sz.x / 2.0, r.position.y - sz.y - GAP - FRAME_PAD)
+				pos.x = clampf(pos.x, 20.0, vp.x - sz.x - 20.0)
+				pos.y = maxf(pos.y, 20.0)
+				_arrow_tip = Vector2(clampf(r.get_center().x, pos.x + 40.0, pos.x + sz.x - 40.0), r.position.y - FRAME_PAD - 4.0)
+				_arrow_dir = Vector2(0, 1)
+				_arrow_base = Vector2(_arrow_tip.x, pos.y + sz.y)
 			"left":
 				pos = Vector2(r.position.x - sz.x - GAP - FRAME_PAD, r.position.y + 120.0)
 				pos.x = maxf(pos.x, 20.0)

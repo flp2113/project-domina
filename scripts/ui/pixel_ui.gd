@@ -21,6 +21,22 @@ static func make_pixel_panel(bg_color: Color = Color(0.08, 0.09, 0.12, 0.96), bo
 	style.modulate_color = tint_from_accent(border_color)
 	return style
 
+# Caixa de diálogo estilo "RPG clássico" (à la Undertale): fundo quase preto
+# ameixa e moldura clara grossa, cantos retos, sem sombra. Usada nas falas do
+# Guia e dicas do tutorial.
+static func make_dialogue_panel(border_color: Color = Color("#efe6cf"), padding: int = 16, border_px: int = 4) -> StyleBoxFlat:
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color("#0c080f")
+	style.set_corner_radius_all(0)
+	style.set_border_width_all(border_px)
+	style.border_color = border_color
+	style.content_margin_left = padding + border_px
+	style.content_margin_right = padding + border_px
+	style.content_margin_top = padding + border_px
+	style.content_margin_bottom = padding + border_px
+	style.anti_aliasing = false
+	return style
+
 # Gera uma caixa de diálogo plana (visual antigo)
 static func make_flat_panel(bg_color: Color = Color(0.08, 0.09, 0.12, 0.96), border_color: Color = Color(0.28, 0.65, 1.0), padding: int = 8) -> StyleBoxFlat:
 	var style = StyleBoxFlat.new()
@@ -272,6 +288,7 @@ static func skin_button(btn: Button, accent: Color = Color.WHITE, force_size: St
 		set_button_icon(btn, icon)
 	btn.add_theme_color_override("font_pressed_color", Color(0.85, 0.75, 0.5))
 	btn.add_theme_color_override("font_disabled_color", Color(0.5, 0.47, 0.42))
+	Juice.hover_pop(btn)   # game juice: cresce no hover, afunda no clique
 
 # Ícone do HUD (icone_*.png / moeda_pequena) à esquerda do texto do botão,
 # ampliado por inteiro (2x quando o botão tem altura >= 36) e sem filtro.

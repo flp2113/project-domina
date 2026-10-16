@@ -4,8 +4,7 @@ extends Node
 # Mapa de 8 camadas: 0 = começo, 1..6 = intermediárias, 7 = chefe. Cada camada
 # intermediária tem um "papel" fixo (ver LAYER_ROLES): garante o que não pode
 # faltar (Loja antes do chefe, um duelo forte no meio) e sorteia o resto com
-# pesos. Evento é a casa "?" (ainda sem conteúdo: por ora só se passa por ela);
-# Melhoria continua fora do mapa até existir.
+# pesos. Evento é a casa "?" (EventView); Altar é o altar de leis.
 @export var layers_count: int = 8
 @export var max_nodes_per_layer: int = 4
 @export var min_nodes_per_layer: int = 2
@@ -15,15 +14,15 @@ extends Node
 # "max_nodes": teto de largura da camada (a antes do chefe é mais estreita).
 const LAYER_ROLES: Dictionary = {
 	1: {"must": [], "fill": {MapNode.NodeType.Duelo: 65, MapNode.NodeType.Evento: 35}},
-	2: {"must": [MapNode.NodeType.Evento], "fill": {MapNode.NodeType.Duelo: 55, MapNode.NodeType.Aposta: 25, MapNode.NodeType.Evento: 20}},
-	3: {"must": [MapNode.NodeType.Loja], "fill": {MapNode.NodeType.Duelo: 50, MapNode.NodeType.Evento: 50}},
-	4: {"must": [MapNode.NodeType.DueloForte], "fill": {MapNode.NodeType.Duelo: 40, MapNode.NodeType.Evento: 35, MapNode.NodeType.Aposta: 25}},
-	5: {"must": [MapNode.NodeType.Evento], "fill": {MapNode.NodeType.Duelo: 40, MapNode.NodeType.DueloForte: 20, MapNode.NodeType.Evento: 25, MapNode.NodeType.Aposta: 15}},
+	2: {"must": [MapNode.NodeType.Evento], "fill": {MapNode.NodeType.Duelo: 50, MapNode.NodeType.Aposta: 20, MapNode.NodeType.Evento: 15, MapNode.NodeType.Altar: 32}},
+	3: {"must": [MapNode.NodeType.Loja], "fill": {MapNode.NodeType.Duelo: 45, MapNode.NodeType.Evento: 40, MapNode.NodeType.Altar: 32}},
+	4: {"must": [MapNode.NodeType.DueloForte], "fill": {MapNode.NodeType.Duelo: 40, MapNode.NodeType.Evento: 35, MapNode.NodeType.Aposta: 25, MapNode.NodeType.Altar: 26}},
+	5: {"must": [MapNode.NodeType.Evento], "fill": {MapNode.NodeType.Duelo: 35, MapNode.NodeType.DueloForte: 20, MapNode.NodeType.Evento: 20, MapNode.NodeType.Aposta: 10, MapNode.NodeType.Altar: 32}},
 	6: {"must": [MapNode.NodeType.Loja], "fill": {MapNode.NodeType.Duelo: 40, MapNode.NodeType.DueloForte: 35, MapNode.NodeType.Evento: 25}, "max_nodes": 3},
 }
 # Largura sorteada das camadas intermediárias (nº de nós: peso).
 const WIDTH_WEIGHTS: Dictionary = {2: 30, 3: 45, 4: 25}
-const SINGLE_PER_LAYER: Array = [MapNode.NodeType.Loja, MapNode.NodeType.Aposta]
+const SINGLE_PER_LAYER: Array = [MapNode.NodeType.Loja, MapNode.NodeType.Aposta, MapNode.NodeType.Altar]
 
 # Lista com tabuleiros quadrados e retangulares: Vector2i(Linhas, Colunas)
 const POSSIBLE_BOARD_SIZES: Array[Vector2i] = [
@@ -49,8 +48,45 @@ func generate_map() -> Array[Array]:
 				current_layer.append(_make_node(layer_index, node_index, types[node_index]))
 		layers.append(current_layer)
 
+	_ensure_altar(layers)
 	_connect_layers(layers)
 	return layers
+
+# Toda run tem pelo menos um Altar de Leis nas camadas 2..5 (o sorteio por
+# peso sozinho deixava ~65% das runs sem nenhum). Troca um nó "dispensável":
+# nunca um tipo garantido pelo papel da camada nem o último nó de combate.
+func _ensure_altar(layers: Array[Array]) -> void:
+	var mid: Array = []
+	for l in range(2, 6):
+		if l < layers.size():
+			mid.append(l)
+	for l in mid:
+		for n in layers[l]:
+			if n.type == MapNode.NodeType.Altar:
+				return
+	mid.shuffle()
+	for l in mid:
+		var layer: Array = layers[l]
+		var must: Array = LAYER_ROLES.get(l, {"must": []})["must"]
+		var combat: int = 0
+		for n in layer:
+			if n.type == MapNode.NodeType.Duelo or n.type == MapNode.NodeType.DueloForte:
+				combat += 1
+		var candidates: Array = []
+		for n in layer:
+			var of_type: int = 0
+			for m in layer:
+				if m.type == n.type:
+					of_type += 1
+			var protected: bool = of_type <= must.count(n.type)
+			if n.type == MapNode.NodeType.Duelo or n.type == MapNode.NodeType.DueloForte:
+				protected = protected or combat <= 1
+			if n.type in [MapNode.NodeType.Duelo, MapNode.NodeType.DueloForte, MapNode.NodeType.Evento, MapNode.NodeType.Aposta] and not protected:
+				candidates.append(n)
+		if not candidates.is_empty():
+			var chosen: MapNode = candidates.pick_random()
+			chosen.type = MapNode.NodeType.Altar
+			return
 
 func _edge_type(layer: int) -> int:
 	return MapNode.NodeType.Começo if layer == 0 else MapNode.NodeType.Chefe

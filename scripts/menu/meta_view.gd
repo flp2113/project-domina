@@ -317,10 +317,13 @@ func _make_pile(tex_path: String, fallback_path: String, label: String, label_co
 				on_open.call())
 	return wrap
 
+var _piles_row_ref: HBoxContainer = null   # fileira de montes atual (alvo do guia)
+
 func _piles_row() -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 	_grid_holder.add_child(row)
+	_piles_row_ref = row
 	return row
 
 func _build_rules() -> void:
@@ -655,6 +658,10 @@ func _tour_target(id: String) -> Rect2:
 		"tabs": c = _tabs_row
 		"grid": c = _scroll
 		"side": c = _side_panel
+		"piles":
+			# Só os montes (largura do conteúdo), não a fileira/quadro inteiro.
+			if _piles_row_ref != null and is_instance_valid(_piles_row_ref) and _piles_row_ref.is_inside_tree():
+				return Rect2(_piles_row_ref.global_position, _piles_row_ref.get_combined_minimum_size())
 	return c.get_global_rect() if c != null else Rect2()
 
 func _on_tour_finished() -> void:

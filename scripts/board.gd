@@ -180,7 +180,9 @@ func is_valid_pos(r: int, c: int) -> bool:
 	return r >= 0 and r < rows and c >= 0 and c < cols
 
 func is_center_tile(r: int, c: int) -> bool:
+	@warning_ignore("integer_division")
 	var mid_r = rows / 2
+	@warning_ignore("integer_division")
 	var mid_c = cols / 2
 	return (r == mid_r or r == mid_r - 1) and (c == mid_c or c == mid_c - 1)
 

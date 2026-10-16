@@ -137,14 +137,57 @@ const AI_ELIGIBLE_CARD_IDS: Array[String] = [
 	"rebellion", "demote", "heir", "guillotine", "ambush"
 ]
 
-static func get_ai_starting_deck(count: int) -> Array[ActionCard]:
-	var pool = get_all_action_cards().filter(func(c: ActionCard): return AI_ELIGIBLE_CARD_IDS.has(c.id))
-	pool.shuffle()
-	if count >= pool.size():
-		return pool
+# Pesos de raridade [comum, rara, épica, lendária] das cartas do inimigo por
+# "profundidade" (camada do mapa; 1 = primeiro duelo, 7 = chefe). Cedo o
+# inimigo só tem cartas fracas; as lendárias ficam para o fim da run.
+const AI_RARITY_BY_DEPTH: Array = [
+	[100, 0, 0, 0],   # 0 (tutorial / sem nó)
+	[92, 8, 0, 0],    # 1
+	[80, 20, 0, 0],   # 2
+	[58, 34, 8, 0],   # 3
+	[42, 38, 18, 2],  # 4
+	[26, 38, 28, 8],  # 5
+	[14, 34, 32, 20], # 6
+	[8, 28, 34, 30],  # 7 (chefe)
+]
+
+static func get_ai_rarity_weights(depth: int) -> Array:
+	return AI_RARITY_BY_DEPTH[clampi(depth, 0, AI_RARITY_BY_DEPTH.size() - 1)]
+
+# depth: camada do nó (+1 em Duelo Forte, 7 no chefe). Sorteia a raridade pelo
+# peso do estágio e depois a carta dentro dela, sem repetir; se uma raridade
+# esgotar, redistribui entre as demais.
+static func get_ai_starting_deck(count: int, depth: int = 0) -> Array[ActionCard]:
+	var pool: Array = get_all_action_cards().filter(func(c: ActionCard): return AI_ELIGIBLE_CARD_IDS.has(c.id))
+	var weights: Array = get_ai_rarity_weights(depth)
 	var result: Array[ActionCard] = []
-	for i in range(count):
-		result.append(pool[i])
+	while result.size() < count and not pool.is_empty():
+		# raridades permitidas (peso > 0) que ainda têm carta no monte
+		var present: Array = []
+		for c in pool:
+			if weights[c.rarity] > 0 and not present.has(c.rarity):
+				present.append(c.rarity)
+		if present.is_empty():
+			# permitidas esgotadas: cai para a mais fraca que sobrou
+			var lowest: int = 99
+			for c in pool:
+				lowest = mini(lowest, c.rarity)
+			present.append(lowest)
+		var rtotal: int = 0
+		for r in present:
+			rtotal += maxi(weights[r], 1)
+		var roll: int = randi_range(1, rtotal)
+		var chosen_r: int = present[0]
+		var acc: int = 0
+		for r in present:
+			acc += maxi(weights[r], 1)
+			if roll <= acc:
+				chosen_r = r
+				break
+		var bucket: Array = pool.filter(func(c: ActionCard): return c.rarity == chosen_r)
+		var pick: ActionCard = bucket[randi() % bucket.size()]
+		result.append(pick)
+		pool.erase(pick)
 	return result
 
 static func pick_weighted_rules(available_pool: Array[RuleCard], count: int) -> Array[RuleCard]:

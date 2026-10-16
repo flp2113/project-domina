@@ -116,7 +116,16 @@ static func draw_piece(canvas: CanvasItem, piece_obj: BoardPiece, center: Vector
 		return
 
 	if piece_obj.is_tree:
-		_draw_tree(canvas, center, cell_size, scale_factor)
+		var ttex: Texture2D = _get_tree_tex(piece_obj.get_instance_id())
+		if ttex != null:
+			# Altura ~110% da casa (a arte tem folga transparente), proporção da arte; escala inteira de pixel quando dá.
+			var k: float = cell_size * scale_factor * 1.1 / float(ttex.get_height())
+			if k >= 2.0:
+				k = floorf(k)
+			var dsz: Vector2 = ttex.get_size() * k
+			canvas.draw_texture_rect(ttex, Rect2((center - dsz / 2.0 + Vector2(0, cell_size * scale_factor * 0.02)).round(), dsz), false)
+		else:
+			_draw_tree(canvas, center, cell_size, scale_factor)
 		return
 
 	var is_white = (piece_obj.owner_team == Board.WHITE)
@@ -147,7 +156,23 @@ static func draw_piece(canvas: CanvasItem, piece_obj: BoardPiece, center: Vector
 			canvas.draw_arc(center, base_radius * 0.35, 0, TAU, 12, Color(0.1, 0.1, 0.1, 0.8), 1.5)
 
 
-# Árvore neutra do chefe da floresta (desenhada em código, sem sprite).
+# Árvore neutra do chefe da floresta: usa as copas em pixel art do cenário
+# (variantes de chão escuro, cuja sombra serve em qualquer casa). A variante é
+# fixa por árvore (id do objeto), então ela não "troca de cara" ao redesenhar.
+const _TREE_SPRITES: Array[String] = [
+	"res://assets/sprites/map/forest/tabuleiro/arvores/arvore_copa_2_chao_escuro.png",
+	"res://assets/sprites/map/forest/tabuleiro/arvores/arvore_copa_4_chao_escuro.png",
+	"res://assets/sprites/map/forest/tabuleiro/arvores/arvore_copa_5_chao_escuro.png",
+]
+static var _tree_tex: Array = []
+
+static func _get_tree_tex(variant: int) -> Texture2D:
+	if _tree_tex.is_empty():
+		for path in _TREE_SPRITES:
+			_tree_tex.append(load(path) if ResourceLoader.exists(path) else null)
+	return _tree_tex[variant % _tree_tex.size()]
+
+# Reserva (sem sprite): árvore desenhada em código.
 static func _draw_tree(canvas: CanvasItem, center: Vector2, cell_size: float, scale_factor: float) -> void:
 	var u = cell_size * scale_factor / 100.0
 	canvas.draw_rect(Rect2(center + Vector2(-7, 6) * u, Vector2(14, 28) * u), Color(0.36, 0.22, 0.12))
