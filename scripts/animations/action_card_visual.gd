@@ -38,7 +38,7 @@ func _build_card() -> void:
 	var rar_color: Color = get_rarity_color(card.rarity if card != null else 0)
 	var rarity_slug = _get_rarity_slug(card.rarity if card != null else 0)
 
-	back_view = _build_back_view(rar_color)
+	back_view = _build_back_view(rar_color, rarity_slug)
 	front_view = _build_front_view(rarity_slug, rar_color)
 	front_view.position = -card_root.pivot_offset
 	card_root.add_child(front_view)
@@ -53,8 +53,11 @@ func _scaled_rect(r: Rect2) -> Rect2:
 	var k = _art_scale()
 	return Rect2(r.position * k, r.size * k)
 
-func _build_back_view(rar_color: Color) -> Control:
-	var back_path = _FACES_DIR + "back.png"
+func _build_back_view(rar_color: Color, rarity_slug: String = "") -> Control:
+	# Verso por raridade (back_<raridade>.png); cai no verso único antigo.
+	var back_path = "res://assets/sprites/cards/back_%s.png" % rarity_slug
+	if not ResourceLoader.exists(back_path):
+		back_path = _FACES_DIR + "back.png"
 	if not ResourceLoader.exists(back_path):
 		return _load_texture_or_fallback("", func(): return _build_back_frame(rar_color))
 	var holder = Control.new()

@@ -330,3 +330,62 @@ static func make_hud_icon_panel(file: String, icon_slot: int = 30, factor: int =
 	style.content_margin_bottom = 6 * factor
 	style.modulate_color = tint
 	return style
+
+
+# Slider vertical pixel art minimalista: trilho fino ameixa com borda de 2 px e
+# "pega" retangular creme/dourada, sem cantos arredondados nem setas.
+static func style_scrollbar(scroll: ScrollContainer) -> void:
+	var bar: VScrollBar = scroll.get_v_scroll_bar()
+	bar.custom_minimum_size.x = 14
+	var track := StyleBoxFlat.new()
+	track.bg_color = Color("#241a2b")
+	track.set_border_width_all(2)
+	track.border_color = Color("#5a4561")
+	track.set_corner_radius_all(0)
+	track.content_margin_left = 0
+	track.content_margin_right = 0
+	var grab := func(fill: Color, edge: Color) -> StyleBoxFlat:
+		var g := StyleBoxFlat.new()
+		g.bg_color = fill
+		g.set_border_width_all(2)
+		g.border_color = edge
+		g.set_corner_radius_all(0)
+		return g
+	bar.add_theme_stylebox_override("scroll", track)
+	bar.add_theme_stylebox_override("scroll_focus", track)
+	bar.add_theme_stylebox_override("grabber", grab.call(Color("#cfc3a6"), Color("#7c6489")))
+	bar.add_theme_stylebox_override("grabber_highlight", grab.call(Color("#efe6cf"), Color("#d9a441")))
+	bar.add_theme_stylebox_override("grabber_pressed", grab.call(Color("#d9a441"), Color("#9a6f2a")))
+
+
+# Tema global dos sliders (vertical e horizontal) no mesmo pixel art do
+# Grimório. Aplicado na janela raiz: vale para inventário, loja, apostas etc.
+static func make_scroll_theme() -> Theme:
+	var th := Theme.new()
+	for kind in ["VScrollBar", "HScrollBar"]:
+		var track := StyleBoxFlat.new()
+		track.bg_color = Color("#241a2b")
+		track.set_border_width_all(2)
+		track.border_color = Color("#5a4561")
+		track.set_corner_radius_all(0)
+		if kind == "VScrollBar":
+			track.content_margin_left = 7
+			track.content_margin_right = 7
+		else:
+			track.content_margin_top = 7
+			track.content_margin_bottom = 7
+		th.set_stylebox("scroll", kind, track)
+		th.set_stylebox("scroll_focus", kind, track)
+		var pairs := {
+			"grabber": [Color("#cfc3a6"), Color("#7c6489")],
+			"grabber_highlight": [Color("#efe6cf"), Color("#d9a441")],
+			"grabber_pressed": [Color("#d9a441"), Color("#9a6f2a")],
+		}
+		for name in pairs:
+			var g := StyleBoxFlat.new()
+			g.bg_color = pairs[name][0]
+			g.set_border_width_all(2)
+			g.border_color = pairs[name][1]
+			g.set_corner_radius_all(0)
+			th.set_stylebox(name, kind, g)
+	return th

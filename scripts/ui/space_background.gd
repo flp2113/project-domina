@@ -208,7 +208,10 @@ static func _get_nebula() -> ImageTexture:
 # Ilhas-tabuleiro e peças voando
 # ---------------------------------------------------------------------
 
-func _build_floaters(rng: RandomNumberGenerator) -> void:
+func _build_floaters(_fixed_rng: RandomNumberGenerator) -> void:
+	# Ilhas e peças usam semente aleatória a cada abertura (estrelas seguem fixas).
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
 	if _island_texs.is_empty():
 		for path in ISLAND_PATHS:
 			if ResourceLoader.exists(path):
@@ -237,7 +240,7 @@ func _build_floaters(rng: RandomNumberGenerator) -> void:
 		spr.modulate = Color(t, t, t, 1.0 * floater_alpha)
 		add_child(spr)
 		_floaters.append({
-			"node": spr, "x": item.x * vp.x, "y": item.y * vp.y,
+			"node": spr, "x": clampf(item.x + rng.randf_range(-0.07, 0.07), 0.02, 0.98) * vp.x, "y": clampf(item.y + rng.randf_range(-0.09, 0.09), 0.04, 0.96) * vp.y,
 			"vx": float(d["speed"]) * (1.0 if rng.randf() < 0.5 else -1.0),
 			"vy": 0.0, "phase": rng.randf() * TAU, "bob": float(d["bob"]), "flip": false, "island": true,
 		})

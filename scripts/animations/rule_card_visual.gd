@@ -91,7 +91,9 @@ func _build_card() -> void:
 	# 1. VERSO — um único verso (back.png) para todas as categorias; cai pro
 	# antigo back_{cor}.png e depois pro painel procedural.
 	var legacy_back = "res://assets/sprites/rules/back_%s.png" % cat_color_name
-	if ResourceLoader.exists(_BACK_PATH):
+	if ResourceLoader.exists(legacy_back):
+		back_view = _make_face_holder(legacy_back)   # verso da categoria
+	elif ResourceLoader.exists(_BACK_PATH):
 		back_view = _make_face_holder(_BACK_PATH)
 	else:
 		back_view = _load_texture_or_fallback(legacy_back, func(): return _build_flat_panel(cat_color.darkened(0.5), cat_color, scaled_size))

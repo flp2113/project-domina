@@ -51,7 +51,7 @@ var text_label: Label
 var gold_label: Label
 var status_label: Label
 var preview_hbox: HBoxContainer
-var choices_box: HBoxContainer
+var choices_box: VBoxContainer
 var leave_btn: Button
 var art_frame: Control
 var art_layer: Control
@@ -60,6 +60,8 @@ var art_has_texture: bool = false
 var dim_rect: ColorRect
 var flash_rect: ColorRect
 var wheel: LuckWheel
+var luck_overlay: Control
+var luck_dim: ColorRect
 var panel_ref: PanelContainer
 var luck_spinning: bool = false
 
@@ -200,7 +202,8 @@ func _requirement_text(req: String) -> String:
 
 # A arte dos eventos é pixel art nativa 1280x576 (dithering de 1px): mostrada
 # 1:1 pra ficar nítida (reduzir/ampliar com filtro estraga o dithering).
-const ART_SIZE: Vector2 = Vector2(1280, 576)
+const CHOICE_W: float = 450.0
+const ART_SIZE: Vector2 = Vector2(900, 405)
 const ART_DIR: String = "res://assets/sprites/events/"
 const EVENT_TINTS := {
 	"chest": Color("#6b4a2a"), "merchant": Color("#4a3a6b"), "altar": Color("#3f6f8a"),
@@ -241,7 +244,7 @@ func _setup_ui() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(center)
 	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 380)
+	margin.add_theme_constant_override("margin_left", 470)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.add_child(margin)
 
@@ -251,7 +254,7 @@ func _setup_ui() -> void:
 
 	var content_box = VBoxContainer.new()
 	content_box.add_theme_constant_override("separation", 10)
-	content_box.custom_minimum_size = Vector2(ART_SIZE.x, 0)
+	content_box.custom_minimum_size = Vector2(ART_SIZE.x + CHOICE_W + 16, 0)
 	panel.add_child(content_box)
 
 	var head = HBoxContainer.new()
@@ -271,10 +274,20 @@ func _setup_ui() -> void:
 	head.add_child(title_label)
 
 	# --- Moldura da arte: imagem do evento (ou placeholder) + camadas de efeito ---
+	var art_row = HBoxContainer.new()
+	art_row.add_theme_constant_override("separation", 16)
+	content_box.add_child(art_row)
 	art_frame = Control.new()
 	art_frame.custom_minimum_size = ART_SIZE
 	art_frame.clip_contents = true
-	content_box.add_child(art_frame)
+	art_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	art_row.add_child(art_frame)
+	# Escolhas empilhadas na DIREITA da arte.
+	choices_box = VBoxContainer.new()
+	choices_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	choices_box.custom_minimum_size = Vector2(CHOICE_W, ART_SIZE.y)
+	choices_box.add_theme_constant_override("separation", 12)
+	art_row.add_child(choices_box)
 	art_layer = Control.new()
 	art_layer.size = ART_SIZE
 	art_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -320,10 +333,21 @@ func _setup_ui() -> void:
 	preview_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art_frame.add_child(preview_hbox)
 
+	# A roleta fica num overlay de tela cheia (fora do quadro da arte, que corta
+	# o que passa da borda): assim a placa do resultado aparece inteira.
+	luck_overlay = Control.new()
+	luck_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	luck_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	luck_overlay.visible = false
+	luck_dim = ColorRect.new()
+	luck_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	luck_dim.color = Color(0.05, 0.03, 0.08, 0.78)
+	luck_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	luck_overlay.add_child(luck_dim)
 	wheel = LuckWheel.new()
-	wheel.position = (ART_SIZE - wheel.size) / 2.0
 	wheel.visible = false
-	art_frame.add_child(wheel)
+	luck_overlay.add_child(wheel)
+	canvas.add_child(luck_overlay)
 
 	flash_rect = ColorRect.new()
 	flash_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -336,34 +360,37 @@ func _setup_ui() -> void:
 	text_label = Label.new()
 	text_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	text_label.custom_minimum_size = Vector2(ART_SIZE.x - 40, 0)
-	text_label.add_theme_font_size_override("font_size", 26)
+	text_label.custom_minimum_size = Vector2(ART_SIZE.x + CHOICE_W - 40, 0)
+	text_label.add_theme_font_size_override("font_size", 40)
 	text_label.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95))
 	content_box.add_child(text_label)
+	content_box.move_child(text_label, 1)  # texto do evento logo abaixo do título, acima da arte
 
 	status_label = Label.new()
 	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	status_label.custom_minimum_size = Vector2(ART_SIZE.x - 40, 0)
-	status_label.add_theme_font_size_override("font_size", 28)
+	status_label.custom_minimum_size = Vector2(ART_SIZE.x + CHOICE_W - 40, 0)
+	status_label.add_theme_font_size_override("font_size", 36)
 	status_label.add_theme_color_override("font_color", Color(0.6, 0.95, 0.65))
 	status_label.visible = false
 	content_box.add_child(status_label)
-
-	choices_box = HBoxContainer.new()
-	choices_box.alignment = BoxContainer.ALIGNMENT_CENTER
-	choices_box.add_theme_constant_override("separation", 12)
-	content_box.add_child(choices_box)
+	content_box.move_child(status_label, 2)
 
 	leave_btn = Button.new()
 	leave_btn.text = "SEGUIR VIAGEM"
-	leave_btn.custom_minimum_size = Vector2(340, 60)
+	leave_btn.custom_minimum_size = Vector2(CHOICE_W, 72)
 	leave_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	leave_btn.add_theme_font_size_override("font_size", 26)
+	leave_btn.add_theme_font_size_override("font_size", 32)
 	PixelUI.skin_button(leave_btn, Color(0.4, 0.7, 0.9), "", "icone_mapa")
 	leave_btn.pressed.connect(_on_leave_pressed)
 	leave_btn.visible = false
-	content_box.add_child(leave_btn)
+	# O botão de seguir ocupa a coluna das escolhas (à direita da arte).
+	var leave_holder := CenterContainer.new()
+	leave_holder.custom_minimum_size = Vector2(CHOICE_W, ART_SIZE.y)
+	leave_holder.add_child(leave_btn)
+	art_row.add_child(leave_holder)
+	leave_holder.visible = false
+	leave_btn.visibility_changed.connect(func(): leave_holder.visible = leave_btn.visible)
 
 	panel_ref = panel
 
@@ -384,11 +411,43 @@ func _draw_art_placeholder() -> void:
 		art_layer.draw_rect(Rect2(0, t * ART_SIZE.y, ART_SIZE.x, ART_SIZE.y / bands + 1), base.darkened(0.55).lerp(base.lightened(0.1), t))
 	var font = ThemeDB.fallback_font
 	art_layer.draw_string(font, Vector2(0, ART_SIZE.y / 2.0 - 10), String(event["title"]), HORIZONTAL_ALIGNMENT_CENTER, ART_SIZE.x, 54, Color(1, 1, 1, 0.22))
-	art_layer.draw_string(font, Vector2(0, ART_SIZE.y / 2.0 + 34), "[ arte do evento: %s%s.png  -  1280x576 ]" % [ART_DIR.trim_prefix("res://"), event["id"]], HORIZONTAL_ALIGNMENT_CENTER, ART_SIZE.x, 22, Color(1, 1, 1, 0.35))
+	art_layer.draw_string(font, Vector2(0, ART_SIZE.y / 2.0 + 34), "[ arte do evento: %s%s.png  -  900x405 ]" % [ART_DIR.trim_prefix("res://"), event["id"]], HORIZONTAL_ALIGNMENT_CENTER, ART_SIZE.x, 22, Color(1, 1, 1, 0.35))
+
+# Texto longo não pode empurrar o painel para fora da tela: quebra em linhas
+# na largura do painel e, se ainda passar de MAX_TEXT_H, reduz a fonte aos poucos.
+const MAX_TEXT_H: float = 190.0
+const MIN_TEXT_FONT: int = 22
+func _set_fit_text(label: Label, text: String, base_size: int) -> void:
+	# Quebra de linha manual (o autowrap do Label crescia o painel além da tela
+	# com texto longo trocado em tempo de execução).
+	label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	var width: float = label.custom_minimum_size.x
+	var font: Font = label.get_theme_font("font")
+	var size := base_size
+	var wrapped := _wrap_text(font, text, width, size)
+	while size > MIN_TEXT_FONT and font.get_multiline_string_size(wrapped, HORIZONTAL_ALIGNMENT_CENTER, -1, size).y > MAX_TEXT_H:
+		size -= 2
+		wrapped = _wrap_text(font, text, width, size)
+	label.add_theme_font_size_override("font_size", size)
+	label.text = wrapped
+
+func _wrap_text(font: Font, text: String, width: float, size: int) -> String:
+	var out: Array[String] = []
+	for para in text.split("\n"):
+		var line := ""
+		for word in para.split(" "):
+			var trial := word if line == "" else line + " " + word
+			if line != "" and font.get_string_size(trial, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > width:
+				out.append(line)
+				line = word
+			else:
+				line = trial
+		out.append(line)
+	return "\n".join(out)
 
 func _show_event() -> void:
 	title_label.text = event["title"]
-	text_label.text = event["text"]
+	_set_fit_text(text_label, event["text"], 40)
 	text_label.visible = true
 	status_label.text = ""
 	status_label.visible = false
@@ -398,15 +457,15 @@ func _show_event() -> void:
 	for child in choices_box.get_children():
 		child.queue_free()
 	var n: int = event["choices"].size()
-	var btn_w: float = (ART_SIZE.x - 12.0 * (n - 1)) / n
 	for choice in event["choices"]:
 		var req: String = choice.get("requires", "")
 		var available = _requirement_met(req)
 		var btn = Button.new()
 		btn.text = "%s\n%s" % [choice["label"], choice["hint"] if available else _requirement_text(req)]
 		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		btn.custom_minimum_size = Vector2(btn_w, 130)
-		btn.add_theme_font_size_override("font_size", 21)
+		btn.custom_minimum_size = Vector2(CHOICE_W, 0 if n > 3 else 140)
+		btn.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		btn.add_theme_font_size_override("font_size", 34)
 		PixelUI.skin_button(btn, _choice_color(choice["id"]))
 		btn.disabled = not available
 		btn.pressed.connect(_on_choice_pressed.bind(choice["id"]))
@@ -490,6 +549,11 @@ func _play_luck(choice_id: String, segments: Array, outcome: String) -> void:
 	var dim_tween = create_tween()
 	dim_tween.tween_property(dim_rect, "modulate:a", 1.0, 0.25)
 	wheel.setup(segments)
+	var vp_size := get_viewport().get_visible_rect().size
+	wheel.position = ((vp_size - wheel.size) / 2.0).floor()
+	luck_dim.modulate.a = 0.0
+	luck_overlay.visible = true
+	create_tween().tween_property(luck_dim, "modulate:a", 1.0, 0.25)
 	wheel.visible = true
 	wheel.scale = Vector2.ONE * 0.2
 	wheel.pivot_offset = wheel.size / 2.0
@@ -510,7 +574,9 @@ func _play_luck(choice_id: String, segments: Array, outcome: String) -> void:
 	out.set_parallel(true)
 	out.tween_property(wheel, "scale", Vector2.ONE * 0.2, 0.25)
 	out.tween_property(wheel, "modulate:a", 0.0, 0.25)
+	out.tween_property(luck_dim, "modulate:a", 0.0, 0.25)
 	await out.finished
+	luck_overlay.visible = false
 	wheel.visible = false
 	wheel.modulate.a = 1.0
 	text_label.remove_theme_color_override("font_color")
@@ -535,7 +601,7 @@ func _input(e: InputEvent) -> void:
 		wheel.skip()
 
 func _finish_choice(choice_id: String, outcome: String) -> void:
-	status_label.text = _resolve(event["id"], choice_id, outcome)
+	_set_fit_text(status_label, _resolve(event["id"], choice_id, outcome), 40)
 	text_label.visible = false
 	status_label.visible = true
 	_refresh_gold_label()
@@ -628,7 +694,9 @@ func _lose_gold(amount: int) -> int:
 
 # Sorteia uma carta com raridade entre min e max (padrão: até a mais alta).
 func _random_card(min_rarity: int, max_rarity: int = ActionCard.Rarity.LEGENDARY) -> ActionCard:
-	var pool = LootTables.get_all_action_cards().filter(func(c): return c.rarity >= min_rarity and c.rarity <= max_rarity)
+	var pool = LootTables.get_player_action_cards().filter(func(c): return c.rarity >= min_rarity and c.rarity <= max_rarity)
+	if pool.is_empty():
+		pool = LootTables.get_all_action_cards().filter(func(c): return c.rarity >= min_rarity and c.rarity <= max_rarity)
 	if pool.is_empty():
 		pool = LootTables.get_all_action_cards()
 	return LootTables.pick_weighted_actions(pool, 1)[0]
@@ -659,7 +727,9 @@ func _forge_card() -> String:
 	RunManager.spend_gold(FORGE_COST)
 	var old_card: ActionCard = candidates[randi() % candidates.size()]
 	var target_rarity = old_card.rarity + 1
-	var pool = LootTables.get_all_action_cards().filter(func(c): return c.rarity == target_rarity and c.id != old_card.id)
+	var pool = LootTables.get_player_action_cards().filter(func(c): return c.rarity == target_rarity and c.id != old_card.id)
+	if pool.is_empty():
+		pool = LootTables.get_all_action_cards().filter(func(c): return c.rarity == target_rarity and c.id != old_card.id)
 	if pool.is_empty():
 		return "A forja esfria sem resultado. Seu ouro é devolvido."
 	var upgraded: ActionCard = pool[randi() % pool.size()]
@@ -678,7 +748,9 @@ func _give_random_law() -> String:
 	var owned_ids: Array[String] = []
 	for r in RunManager.active_rules:
 		owned_ids.append(r.id)
-	var pool = LootTables.get_all_rules().filter(func(r: RuleCard): return not owned_ids.has(r.id))
+	var pool = LootTables.get_player_rules().filter(func(r: RuleCard): return not owned_ids.has(r.id))
+	if pool.is_empty():
+		pool = LootTables.get_all_rules().filter(func(r: RuleCard): return not owned_ids.has(r.id))
 	if pool.is_empty():
 		RunManager.add_gold(10)
 		return "Você já conhece todas as Leis: o altar devolve +10 de ouro."
@@ -691,11 +763,11 @@ func _give_random_law() -> String:
 	return "Suas Leis estão lotadas: escolha qual revogar."
 
 func _on_reward_law_replaced(_old: RuleCard, new_rule: RuleCard) -> void:
-	status_label.text = "Uma Lei se revela:"
+	_set_fit_text(status_label, "Uma Lei se revela:", 40)
 	preview_hbox.add_child(_labeled_law_visual("NOVA LEI", new_rule, Color(1.2, 1.15, 0.85)))
 
 func _on_reward_law_declined() -> void:
-	status_label.text = "Você recusou a Lei oferecida."
+	_set_fit_text(status_label, "Você recusou a Lei oferecida.", 40)
 
 func _on_leave_pressed() -> void:
 	if pending_ambush_kind != "":
@@ -704,9 +776,9 @@ func _on_leave_pressed() -> void:
 		RunManager.ambush_bonus_gold = pending_ambush_bonus
 		RunManager.current_node_type = MapNode.NodeType.Duelo
 		RunManager.current_board_size = RunManager.AMBUSH_BOARD_SIZE
-		get_tree().call_deferred("change_scene_to_file", "res://main.tscn")
+		SceneTransition.go("res://main.tscn")
 		return
-	get_tree().call_deferred("change_scene_to_file", MAP_SCENE_PATH)
+	SceneTransition.go(MAP_SCENE_PATH)
 
 # Pré-visualizações (mesmo padrão da BetView).
 func _labeled_card_visual(caption: String, card: ActionCard, tint: Color) -> Control:

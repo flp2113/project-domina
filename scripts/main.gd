@@ -15,6 +15,7 @@ extends Node2D
 
 const MAP_SCENE_PATH: String = "res://map_view.tscn"
 const TUTORIAL_MAP_SCENE_PATH: String = "res://tutorial_map_view.tscn"
+const RUN_OVER_SCENE_PATH: String = "res://run_over_view.tscn"
 const EMPTY_TILE: Vector2i = Vector2i(-1, -1)
 
 # ---------- Tabuleiro e duelo ----------
@@ -564,9 +565,17 @@ func _on_game_over_action(won: bool) -> void:
 		_leave_duel()
 		return
 
+	# Fim de run (derrota ou Chefe derrotado): paga os Coroas e abre a tela de resumo.
 	if not won:
+		MetaProgress.settle_run(false)
 		RunManager.start_new_run()
-		_leave_duel()
+		_go_run_over()
+		return
+
+	if RunManager.current_node_type == MapNode.NodeType.Chefe:
+		MetaProgress.settle_run(true)
+		RunManager.start_new_run()
+		_go_run_over()
 		return
 
 	if RunManager.current_node_type == MapNode.NodeType.DueloForte:
@@ -574,9 +583,12 @@ func _on_game_over_action(won: bool) -> void:
 	else:
 		action_card_reward_modal.prompt_reward()
 
+func _go_run_over() -> void:
+	SceneTransition.go(RUN_OVER_SCENE_PATH)
+
 func _leave_duel() -> void:
 	var target = TUTORIAL_MAP_SCENE_PATH if TutorialManager.is_active else MAP_SCENE_PATH
-	get_tree().call_deferred("change_scene_to_file", target)
+	SceneTransition.go(target)
 
 # ==========================================
 # INPUT
@@ -595,9 +607,11 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode == KEY_ESCAPE:
 			if action_cards.has_selected_card():
 				action_cards.cancel_selection()
+				get_viewport().set_input_as_handled()
 				return
 			if inventory_ui and inventory_ui.visible:
 				inventory_ui.visible = false
+				get_viewport().set_input_as_handled()
 				return
 
 	var is_left_click = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT
@@ -698,7 +712,7 @@ func debug_force_sudden_death() -> void:
 
 func debug_restart_run() -> void:
 	RunManager.start_new_run()
-	get_tree().call_deferred("change_scene_to_file", MAP_SCENE_PATH)
+	SceneTransition.go(MAP_SCENE_PATH)
 
 # Liga/desliga uma Lei da run. Quem reage é o RunManager.rules_updated →
 # _on_run_rules_updated (reconstrói o pipeline do duelo).

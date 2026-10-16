@@ -115,12 +115,12 @@ func _input(event: InputEvent) -> void:
 			# nó no mapa — só pra facilitar teste, não é um atalho pro
 			# jogo normal.
 			is_traveling = true
-			get_tree().call_deferred("change_scene_to_file", "res://bet_view.tscn")
+			SceneTransition.go("res://bet_view.tscn")
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_E:
 			# DEBUG: acesso direto a um evento "?" (mesma ideia da tecla B).
 			is_traveling = true
-			get_tree().call_deferred("change_scene_to_file", "res://event_view.tscn")
+			SceneTransition.go("res://event_view.tscn")
 			get_viewport().set_input_as_handled()
 
 func _position_nodes(layers: Array[Array]) -> void:
@@ -225,13 +225,13 @@ func _get_connection_key(parent: MapNode, child: MapNode) -> String:
 
 const _NODE_SPRITES: Dictionary = {
 	MapNode.NodeType.Começo: "nodo_inicio",
-	MapNode.NodeType.Duelo: "nodo_batalha",
+	MapNode.NodeType.Duelo: "nodo_espadas",
 	MapNode.NodeType.DueloForte: "nodo_elite",
 	MapNode.NodeType.Chefe: "nodo_boss",
 	MapNode.NodeType.Loja: "nodo_loja",
 	MapNode.NodeType.Evento: "nodo_evento",
 	MapNode.NodeType.Melhoria: "nodo_estrela",
-	MapNode.NodeType.Aposta: "nodo_desafio",
+	MapNode.NodeType.Aposta: "nodo_aposta",
 }
 
 var node_art: Dictionary = {}        # MapNode -> {"base": TextureRect, "ind": TextureRect}
@@ -393,13 +393,13 @@ func _on_node_clicked(node: MapNode) -> void:
 	
 	match node.type:
 		MapNode.NodeType.Duelo, MapNode.NodeType.DueloForte, MapNode.NodeType.Chefe:
-			get_tree().call_deferred("change_scene_to_file", "res://main.tscn")
+			SceneTransition.go("res://main.tscn")
 		MapNode.NodeType.Loja:
-			get_tree().call_deferred("change_scene_to_file", "res://shop_view.tscn")
+			SceneTransition.go("res://shop_view.tscn")
 		MapNode.NodeType.Aposta:
-			get_tree().call_deferred("change_scene_to_file", "res://bet_view.tscn")
+			SceneTransition.go("res://bet_view.tscn")
 		MapNode.NodeType.Evento:
-			get_tree().call_deferred("change_scene_to_file", "res://event_view.tscn")
+			SceneTransition.go("res://event_view.tscn")
 		_:
 			is_traveling = false
 

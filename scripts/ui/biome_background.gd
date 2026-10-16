@@ -16,8 +16,10 @@ const BIOMES: Dictionary = {
 		"line": Color("2a3a31"), "dot": Color("3a4f3f"), "fill": Color("1d2923"),
 		"patterns": ["losango", "xadrez", "escamas", "estrelas", "diagonal", "trama"],
 		"fireflies": Color("d9a441"), "n_fireflies": 22,
-		"leaves": [Color("5b8f4e"), Color("3f6b3a"), Color("d0802f")], "n_leaves": 50,
+		"leaves": [Color("5b8f4e"), Color("3f6b3a"), Color("d0802f")], "n_leaves": 14,
 		"spores": Color("7fa874"), "n_spores": 46,
+		# Cores das transições de cena (SceneTransition): a, b, chefe, detalhe.
+		"trans_a": Color("16201c"), "trans_b": Color("2a3a31"), "trans_boss": Color("2a1418"), "trans_edge": Color("5b8f4e"),
 	},
 	"tutorial": {
 		"top": Color("231a2a"), "bottom": Color("1a1420"),
@@ -26,6 +28,7 @@ const BIOMES: Dictionary = {
 		"fireflies": Color("efe6cf"), "n_fireflies": 18,
 		"leaves": [Color("7c6489"), Color("5a4561"), Color("d9a441")], "n_leaves": 0,   # sem folhas no tutorial
 		"spores": Color("a58bb3"), "n_spores": 40,
+		"trans_a": Color("231a2a"), "trans_b": Color("3a2b41"), "trans_boss": Color("2a1418"), "trans_edge": Color("d9a441"),
 	},
 }
 

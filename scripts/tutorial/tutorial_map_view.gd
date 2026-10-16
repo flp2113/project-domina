@@ -13,7 +13,10 @@ const TILE_SIZE: float = MapView.TILE_SIZE
 const MAP_SPRITE_SCALE: int = MapView.MAP_SPRITE_SCALE
 const NODE_SPRITE_SCALE: int = MapView.NODE_SPRITE_SCALE
 const TILES_PER_LAYER: int = MapView.TILES_PER_LAYER
-const TILES_BETWEEN_NODES: int = MapView.TILES_BETWEEN_NODES
+# Valor PRÓPRIO do tutorial (não herdar do mapa real): o tabuleiro do tutorial
+# tem largura fixa e as trilhas só fecham se o desvio lateral entre dois nós for
+# <= TILES_PER_LAYER. Mudar a largura do mapa da floresta não deve mexer aqui.
+const TILES_BETWEEN_NODES: int = 2
 const PAWN_SPRITE_PX: float = MapView.PAWN_SPRITE_PX
 # Casas extras acima do último nó: a "última fileira" do mapa (onde o Guia
 # chega no final e é coroado sem querer).
@@ -31,10 +34,10 @@ const CLEAR_COLOR: Color = Color(0.05, 0.06, 0.09)
 # Soquete de cada passo do roteiro (mesmos sprites do mapa real).
 var step_sprites: Dictionary = {
 	TutorialManager.Step.INTRO: "nodo_inicio",
-	TutorialManager.Step.DUEL_1_BASICS: "nodo_batalha",
+	TutorialManager.Step.DUEL_1_BASICS: "nodo_espadas",
 	TutorialManager.Step.SHOP: "nodo_loja",
-	TutorialManager.Step.DUEL_3_CARDS_AND_LAWS: "nodo_batalha",
-	TutorialManager.Step.BET: "nodo_desafio",
+	TutorialManager.Step.DUEL_3_CARDS_AND_LAWS: "nodo_espadas",
+	TutorialManager.Step.BET: "nodo_aposta",
 }
 
 var guide_view: TutorialGuideView
@@ -114,7 +117,7 @@ func _ready() -> void:
 			await guide_view.play_sequence(TutorialManager.get_flip_lines())
 		TutorialManager.advance_to(TutorialManager.Step.FINISHED)
 		TutorialManager.end_tutorial()
-		get_tree().call_deferred("change_scene_to_file", MAIN_MENU_PATH)
+		SceneTransition.go(MAIN_MENU_PATH)
 		return
 
 	if not TutorialManager.last_duel_won:
@@ -560,15 +563,15 @@ func _on_node_pressed(step: int) -> void:
 			# batalha agora (ver main.gd), não mais aqui no mapa —
 			# assim o jogo já "começa" com o Guia falando, em vez de
 			# uma conversa solta antes de trocar de cena.
-			get_tree().call_deferred("change_scene_to_file", DUEL_SCENE_PATH)
+			SceneTransition.go(DUEL_SCENE_PATH)
 		TutorialManager.Step.SHOP:
 			TutorialManager.last_duel_won = true
 			await guide_view.play_sequence(TutorialManager.get_shop_intro_lines())
-			get_tree().call_deferred("change_scene_to_file", SHOP_SCENE_PATH)
+			SceneTransition.go(SHOP_SCENE_PATH)
 		TutorialManager.Step.BET:
 			TutorialManager.last_duel_won = true
-			get_tree().call_deferred("change_scene_to_file", BET_SCENE_PATH)
+			SceneTransition.go(BET_SCENE_PATH)
 
 func _on_exit_pressed() -> void:
 	TutorialManager.end_tutorial()
-	get_tree().call_deferred("change_scene_to_file", MAIN_MENU_PATH)
+	SceneTransition.go(MAIN_MENU_PATH)

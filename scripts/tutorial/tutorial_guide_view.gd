@@ -15,6 +15,9 @@ signal sequence_finished()
 const TYPE_SPEED: float = 95.0          # caracteres por segundo
 const DIM_DIALOGUE: float = 0.62        # escurecimento durante a fala
 const DIM_OBJECTIVE: float = 0.38       # escurecimento enquanto o objetivo está ativo
+# Folga entre a caixa de diálogo e o pé da tela (antes ficava colada embaixo).
+const DIALOGUE_BOTTOM_MARGIN: int = 110
+const IDLE_HINT_SECONDS: float = 12.0   # parado sem cumprir o objetivo -> dica extra
 
 var spot_resolver: Callable = Callable()
 
@@ -73,6 +76,10 @@ var _line_spot_id: String = ""
 var _line_spot_caption: String = ""
 var _obj_spot_id: String = ""
 var _obj_spot_caption: String = ""
+var _obj_spot_dim: float = DIM_OBJECTIVE
+var _obj_idle_tip: String = ""
+var _obj_idle_spot: String = ""
+var _obj_idle_t: float = 0.0
 var _pulse_rect: Rect2 = Rect2()
 var _pulse_until: float = 0.0
 var _pulse_spot_id: String = ""   # se definido, a moldura segue o trecho (cresce junto)
@@ -83,6 +90,9 @@ var _title_card: PanelContainer = null
 func _ready() -> void:
 	layer = 130
 	_build_ui()
+	# A caixa de diálogo é o último filho: desenha por cima do quadro de
+	# objetivo, da dica e dos efeitos (ordem de filhos = ordem de desenho).
+	move_child(_dock_vbox.get_parent(), -1)
 	TutorialManager.objective_changed.connect(_on_objective_changed)
 	TutorialManager.objective_started.connect(_on_objective_started)
 	TutorialManager.objective_done.connect(_on_objective_done)
@@ -115,7 +125,7 @@ func _build_ui() -> void:
 	dock_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dock_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dock_margin.add_theme_constant_override("margin_top", 30)
-	dock_margin.add_theme_constant_override("margin_bottom", 24)
+	dock_margin.add_theme_constant_override("margin_bottom", DIALOGUE_BOTTOM_MARGIN)
 	add_child(dock_margin)
 
 	_fx_top = Control.new()
@@ -625,10 +635,15 @@ func _on_objective_changed(text: String, done: bool) -> void:
 func _on_objective_started(obj: Dictionary) -> void:
 	_obj_spot_id = str(obj.get("spot", ""))
 	_obj_spot_caption = str(obj.get("caption", ""))
+	_obj_spot_dim = float(obj.get("dim", DIM_OBJECTIVE))
+	_obj_idle_tip = str(obj.get("idle_tip", ""))
+	_obj_idle_spot = str(obj.get("idle_spot", ""))
+	_obj_idle_t = 0.0
 
 func _on_objective_done(_event_id: String) -> void:
 	_obj_spot_id = ""
 	_obj_spot_caption = ""
+	_obj_idle_tip = ""
 
 # ---------------------------------------------------------------------
 # Dicas e destaques
@@ -735,6 +750,7 @@ func _process(delta: float) -> void:
 	if tip_panel != null:
 		tip_panel.modulate.a = 0.0 if (is_showing_sequence or (_title_card != null and is_instance_valid(_title_card))) else 1.0
 	_t += delta
+	_update_idle_hint(delta)
 	_update_fx(delta)
 	# Portrait "fala" enquanto o texto está sendo digitado.
 	if dialogue_panel.visible and portrait != null:
@@ -754,16 +770,36 @@ func _process(delta: float) -> void:
 			text_label.visible_characters = int(_type_pos)
 	_overlay.queue_redraw()
 
+# Jogador parado há um tempo sem cumprir o objetivo (ex.: não percebeu que é pra
+# mover uma peça): mostra a dica do objetivo e pulsa o trecho indicado, uma vez.
+func _update_idle_hint(delta: float) -> void:
+	if _obj_idle_tip == "" or is_showing_sequence:
+		return
+	_obj_idle_t += delta
+	if _obj_idle_t < IDLE_HINT_SECONDS:
+		return
+	var tip := _obj_idle_tip
+	_obj_idle_tip = ""
+	show_tip(tip, 9.0)
+	if _obj_idle_spot != "" and _resolve(_obj_idle_spot).size != Vector2.ZERO:
+		pulse_spot(_obj_idle_spot, 6.0)
+
 # Qual destaque está valendo agora: fala > objetivo > pulso avulso.
 func _active_spot() -> Dictionary:
 	if is_showing_sequence and _line_spot_id != "":
 		var r = _resolve(_line_spot_id)
 		if r.size != Vector2.ZERO:
 			return {"rect": r, "caption": _line_spot_caption, "dim": DIM_DIALOGUE}
+	# Dica por inatividade (objetivo sem escurecimento): a moldura da dica vem
+	# na frente da moldura do objetivo, senão ela nunca apareceria.
+	if not is_showing_sequence and _obj_spot_dim <= 0.0 and _t < _pulse_until and _pulse_spot_id != "":
+		var ri = _resolve(_pulse_spot_id)
+		if ri.size != Vector2.ZERO:
+			return {"rect": ri.grow(8.0), "caption": "", "dim": 0.0}
 	if not is_showing_sequence and _obj_spot_id != "":
 		var r2 = _resolve(_obj_spot_id)
 		if r2.size != Vector2.ZERO:
-			return {"rect": r2, "caption": _obj_spot_caption, "dim": DIM_OBJECTIVE}
+			return {"rect": r2, "caption": _obj_spot_caption, "dim": _obj_spot_dim}
 	if _t < _pulse_until:
 		if _pulse_spot_id != "":
 			var rp = _resolve(_pulse_spot_id)

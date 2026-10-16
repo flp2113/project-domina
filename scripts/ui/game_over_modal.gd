@@ -113,7 +113,7 @@ func show_game_over(won: bool, rewards: Dictionary = {}, custom_title: String = 
 		stats_container.add_child(defeat_lbl)
 
 		total_label.text = ""
-		confirm_btn.text = "TENTAR NOVAMENTE"
+		confirm_btn.text = "VER RESUMO DA RUN"
 		PixelUI.skin_button(confirm_btn, Color(0.9, 0.25, 0.3))
 		confirm_btn.disabled = false
 
@@ -186,6 +186,8 @@ func _run_rewards_animation() -> void:
 			await get_tree().create_timer(0.12).timeout
 
 	total_label.text = "TOTAL RECEBIDO: +%d OURO" % reward_data.get("total", total_gold_accum)
+	if int(reward_data.get("coroas", 0)) > 0:
+		total_label.text += "\n+%d COROAS (META)" % int(reward_data["coroas"])
 	is_counting = false
 	confirm_btn.disabled = false
 

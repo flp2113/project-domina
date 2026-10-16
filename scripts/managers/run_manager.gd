@@ -89,7 +89,7 @@ func remove_rule(rule_id: String) -> void:
 	rules_updated.emit()
 
 func start_new_run():
-	gold = 0
+	gold = 10000
 	shop_purchases = 0
 	current_board_size = Vector2i(8, 8)
 	current_node_type = 1
@@ -101,12 +101,14 @@ func start_new_run():
 	seen_event_ids.clear()
 	rule_pipeline.clear_rules()
 	_init_default_deck()
+	MetaProgress.reset_run_stats()
+	# A mochila do Grimório é entregue só pelo botão JOGAR (MetaProgress.consume_bag_into_run).
 	
 
 # DEBUG: começa cada run com UMA cópia de todas as Cartas de Ação do jogo no
 # inventário (para testar). Ponha false para voltar ao baralho inicial normal.
 # Cartas novas entram sozinhas, pois vêm de LootTables.get_all_action_cards().
-const DEBUG_ALL_CARDS: bool = false
+const DEBUG_ALL_CARDS: bool = true
 
 func _init_default_deck() -> void:
 	player_deck.clear()

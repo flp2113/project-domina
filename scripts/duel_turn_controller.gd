@@ -525,7 +525,8 @@ func _maybe_play_ai_card() -> void:
 		if target == null:
 			continue
 
-		await card.execute(board, target, host.ai_team, context)
+		# Primeiro a carta aparece/é lançada, SÓ DEPOIS o efeito resolve (assim
+		# cara ou coroa, animações etc. acontecem depois de mostrar a carta).
 		ai_deck_mgr.play_card_at(i)
 		if host.ai_card_reveal_view != null:
 			var from_pos = Vector2(get_viewport().get_visible_rect().size.x / 2.0, 75.0)
@@ -538,6 +539,7 @@ func _maybe_play_ai_card() -> void:
 			# acelerar visualmente enquanto o código continua esperando o
 			# tempo cheio por baixo dos panos.
 			await host.ai_card_reveal_view.sequence_finished
+		await card.execute(board, target, host.ai_team, context)
 		return
 
 # Devolve a posição-alvo (Vector2i) escolhida pra essa carta, ou null se a
@@ -799,6 +801,9 @@ func trigger_game_over(won: bool, rewards: Dictionary = {}, custom_title: String
 	host.update_gold_display()
 	if won:
 		TutorialManager.report_event("duel_won")
+	# Meta-progressão: conta a vitória (as Coroas são pagas no fim da run).
+	if not TutorialManager.is_active and won:
+		MetaProgress.register_duel_win(RunManager.current_node_type)
 	host.game_over_modal.show_game_over(won, rewards, custom_title, defeat_message)
 
 func check_game_over() -> bool:

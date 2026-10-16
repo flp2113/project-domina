@@ -2,6 +2,7 @@ class_name MainMenu
 extends Control
 
 const MAP_SCENE_PATH: String = "res://map_view.tscn"
+const META_SCENE_PATH: String = "res://meta_view.tscn"
 const TUTORIAL_MAP_SCENE_PATH: String = "res://tutorial_map_view.tscn"
 
 func _ready() -> void:
@@ -35,6 +36,10 @@ func _setup_ui() -> void:
 	var play_btn = _make_menu_button("JOGAR", Color(0.12, 0.22, 0.16), Color(0.3, 0.9, 0.4))
 	play_btn.pressed.connect(_on_play_pressed)
 	center_box.add_child(play_btn)
+
+	var meta_btn = _make_menu_button("GRIMÓRIO", Color(0.2, 0.16, 0.08), Color(0.85, 0.64, 0.25))
+	meta_btn.pressed.connect(_on_meta_pressed)
+	center_box.add_child(meta_btn)
 
 	var tutorial_btn = _make_menu_button("TUTORIAL", Color(0.12, 0.16, 0.24), Color(0.35, 0.7, 1.0))
 	tutorial_btn.pressed.connect(_on_tutorial_pressed)
@@ -96,12 +101,16 @@ func _make_menu_button(text: String, bg_color: Color, border_color: Color) -> Bu
 func _on_play_pressed() -> void:
 	if RunManager != null:
 		RunManager.start_new_run()
-	get_tree().call_deferred("change_scene_to_file", MAP_SCENE_PATH)
+		MetaProgress.consume_bag_into_run()
+	SceneTransition.go(MAP_SCENE_PATH)
+
+func _on_meta_pressed() -> void:
+	SceneTransition.go(META_SCENE_PATH)
 
 func _on_tutorial_pressed() -> void:
 	if TutorialManager != null:
 		TutorialManager.start_tutorial()
-	get_tree().call_deferred("change_scene_to_file", TUTORIAL_MAP_SCENE_PATH)
+	SceneTransition.go(TUTORIAL_MAP_SCENE_PATH)
 
 func _on_quit_pressed() -> void:
 	get_tree().quit()

@@ -72,12 +72,31 @@ static func get_all_action_cards() -> Array[ActionCard]:
 	]
 	return cards
 
+# Pools do JOGADOR: só o que foi desbloqueado no Grimório (MetaProgress).
+# No tutorial vale tudo. Use estes (e não get_all_*) em loja, recompensas,
+# eventos e apostas; IA, debug e o Grimório seguem usando get_all_*.
+static func get_player_rules() -> Array[RuleCard]:
+	var out: Array[RuleCard] = []
+	var tutorial: bool = TutorialManager != null and TutorialManager.is_active
+	for r in get_all_rules():
+		if tutorial or MetaProgress.is_rule_unlocked(r.id):
+			out.append(r)
+	return out
+
+static func get_player_action_cards() -> Array[ActionCard]:
+	var out: Array[ActionCard] = []
+	var tutorial: bool = TutorialManager != null and TutorialManager.is_active
+	for c in get_all_action_cards():
+		if tutorial or MetaProgress.is_card_unlocked(c.id):
+			out.append(c)
+	return out
+
 # =========================================================
 # MÉTODOS DE SORTEIO PONDERADO
 # =========================================================
 
 static func get_random_rules(count: int, exclude_ids: Array[String] = []) -> Array[RuleCard]:
-	var pool = get_all_rules().filter(func(r: RuleCard): return not exclude_ids.has(r.id))
+	var pool = get_player_rules().filter(func(r: RuleCard): return not exclude_ids.has(r.id))
 	return pick_weighted_rules(pool, count)
 
 # Leis seguras pra conceder à IA (inimigo). Só as que decidem seu efeito
@@ -103,7 +122,7 @@ static func get_random_ai_rules(count: int) -> Array[RuleCard]:
 	return chosen
 
 static func get_random_action_cards(count: int, exclude_ids: Array[String] = []) -> Array[ActionCard]:
-	var pool = get_all_action_cards().filter(func(c: ActionCard): return not exclude_ids.has(c.id))
+	var pool = get_player_action_cards().filter(func(c: ActionCard): return not exclude_ids.has(c.id))
 	return pick_weighted_actions(pool, count)
 
 # Cartas seguras pra dar à IA: as que não dependem de um recurso que só o

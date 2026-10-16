@@ -549,9 +549,9 @@ func _on_leave_pressed() -> void:
 			leave_btn.disabled = true
 		if tutorial_guide_view != null:
 			await tutorial_guide_view.play_sequence(TutorialManager.get_shop_done_lines())
-		get_tree().call_deferred("change_scene_to_file", TUTORIAL_MAP_SCENE_PATH)
+		SceneTransition.go(TUTORIAL_MAP_SCENE_PATH)
 		return
-	get_tree().call_deferred("change_scene_to_file", MAP_SCENE_PATH)
+	SceneTransition.go(MAP_SCENE_PATH)
 
 # =============================================================
 # TUTORIAL (Lição 2)

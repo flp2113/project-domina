@@ -534,21 +534,25 @@ func _on_call_selected(called_white: bool) -> void:
 	coin_flip_view.play_toss(coin_center, COIN_RADIUS)
 
 func _get_better_rarity_card(min_rarity: int) -> ActionCard:
-	var all_cards = LootTables.get_all_action_cards()
+	var all_cards = LootTables.get_player_action_cards()
 	var target_rarity = mini(min_rarity + 1, ActionCard.Rarity.LEGENDARY)
 	var pool = all_cards.filter(func(c): return c.rarity == target_rarity)
 	if pool.is_empty():
 		pool = all_cards.filter(func(c): return c.rarity == min_rarity)
 	if pool.is_empty():
+		pool = LootTables.get_all_action_cards().filter(func(c): return c.rarity == min_rarity)
+	if pool.is_empty():
 		return null
 	return pool[randi() % pool.size()]
 
 func _get_better_rarity_rule(min_rarity: int, exclude_ids: Array[String]) -> RuleCard:
-	var all_rules = LootTables.get_all_rules().filter(func(r): return not exclude_ids.has(r.id))
+	var all_rules = LootTables.get_player_rules().filter(func(r): return not exclude_ids.has(r.id))
 	var target_rarity = mini(min_rarity + 1, RuleCard.Rarity.LEGENDARY)
 	var pool = all_rules.filter(func(r): return r.rarity == target_rarity)
 	if pool.is_empty():
 		pool = all_rules.filter(func(r): return r.rarity == min_rarity)
+	if pool.is_empty():
+		pool = LootTables.get_all_rules().filter(func(r): return not exclude_ids.has(r.id) and r.rarity == min_rarity)
 	if pool.is_empty():
 		return null
 	return pool[randi() % pool.size()]
@@ -638,7 +642,7 @@ func _on_leave_pressed() -> void:
 		return
 	TutorialManager.report_event("bet_leave")
 	var target = "res://tutorial_map_view.tscn" if TutorialManager.is_active else MAP_SCENE_PATH
-	get_tree().call_deferred("change_scene_to_file", target)
+	SceneTransition.go(target)
 
 # =============================================================
 # TUTORIAL (Lição 4)
