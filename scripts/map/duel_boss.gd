@@ -35,6 +35,8 @@ var pending_devour_tiles: Array = []
 
 func setup(p_board: Board, p_human_team: int, p_ai_team: int, p_sudden_death_mgr: SuddenDeathManager) -> void:
 	super.setup(p_board, p_human_team, p_ai_team, p_sudden_death_mgr)
+	if p_sudden_death_mgr != null:
+		p_sudden_death_mgr.stall_only = true
 	hazard_tiles = []
 	_turns_since_last_bite = 0
 	should_trigger_devour = false
@@ -67,11 +69,24 @@ func get_enemy_fixed_rules() -> Array[RuleCard]:
 			rules.append(RuleFrogDevourer.new())
 	return rules
 
+# O Chefe usa a Morte Súbita só como anti-impasse (poucas peças/só Damas e
+# ninguém captura): ver SuddenDeathManager.stall_only. Vitória normal continua
+# sendo a eliminação total.
 func uses_sudden_death() -> bool:
-	return false
+	return true
 
 func requires_full_elimination() -> bool:
 	return true
+
+# Cerco total: o Chefe exige eliminação, mas se TODAS as peças dele ficam
+# bloqueadas (por si mesmas / bordas / árvores) e continuam assim por vários
+# turnos seguidos, o duelo nunca acabaria (ele não joga e o jogador não
+# consegue capturar nada). Isso conta como vitória do jogador.
+const BLOCKED_TURNS_TO_WIN: int = 2
+var _ai_blocked_streak: int = 0
+
+func note_ai_turn(had_move: bool) -> void:
+	_ai_blocked_streak = 0 if had_move else _ai_blocked_streak + 1
 
 func on_turn_end(_board: Board) -> void:
 	if law_id != LAW_FROG:
@@ -110,6 +125,14 @@ func _roll_fly_tiles() -> void:
 
 func check_custom_victory() -> Dictionary:
 	var ai_pieces_remaining = board.count_pieces(ai_team)
+
+	if ai_pieces_remaining > 0 and _ai_blocked_streak >= BLOCKED_TURNS_TO_WIN:
+		return {
+			"ended": true,
+			"won": true,
+			"title": "CHEFAO ENCURRALADO!",
+			"details": ""
+		}
 
 	if ai_pieces_remaining == 0:
 		return {

@@ -16,9 +16,9 @@ signal changed()
 const SAVE_PATH: String = "user://meta.cfg"
 
 # Ganho por run
-const COROAS_PER_DUEL: int = 2
-const COROAS_PER_STRONG: int = 5
-const COROAS_BOSS_WIN: int = 20
+const COROAS_PER_DUEL: int = 3
+const COROAS_PER_STRONG: int = 7
+const COROAS_BOSS_WIN: int = 30
 
 # Preço de desbloqueio por raridade (0 comum, 1 raro, 2 épico, 3 lendário)
 const RULE_UNLOCK_COST: Array[int] = [8, 15, 25, 40]

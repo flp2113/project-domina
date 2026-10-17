@@ -45,6 +45,11 @@ var is_resolving_card_effect: bool = false
 
 # ---------- Estado lido/escrito pelas Cartas de Ação ----------
 var extra_turns_by_team: Dictionary = {}
+# O que o jogador está jogando "de bônus" agora (e pode ignorar com o botão):
+# "" = nada | "step" = passo extra (Segundo Movimento) | "fly" = 2ª jogada da
+# Dama Voadora | "turn" = turno extra inteiro. Quem escreve é o DuelTurnController.
+var extra_skip_kind: String = ""
+var skip_extra_btn: Button
 var show_enemy_threats: bool = false
 var lost_piece_last_enemy_turn: bool = false
 var predicted_ai_move: Dictionary = {}
@@ -341,6 +346,17 @@ func _setup_ui() -> void:
 	action_card_reward_modal.card_chosen.connect(func(_c): _leave_duel())
 	action_card_reward_modal.skipped.connect(_leave_duel)
 	ui_layer.add_child(action_card_reward_modal)
+
+	# Botão "IGNORAR ... EXTRA": aparece acima do tabuleiro enquanto o jogador tem
+	# uma jogada/turno de bônus, para poder abrir mão dela.
+	skip_extra_btn = Button.new()
+	skip_extra_btn.custom_minimum_size = Vector2(380, 52)
+	skip_extra_btn.add_theme_font_size_override("font_size", 22)
+	skip_extra_btn.focus_mode = Control.FOCUS_NONE
+	skip_extra_btn.visible = false
+	PixelUI.skin_button(skip_extra_btn, Color(0.85, 0.64, 0.25))
+	skip_extra_btn.pressed.connect(func(): turn_controller.skip_extra())
+	ui_layer.add_child(skip_extra_btn)
 
 	if TutorialManager.is_active:
 		tutorial_guide_view = TutorialGuideView.new()
@@ -744,7 +760,21 @@ func _can_use_debug_keys() -> bool:
 	return DebugFlags.SHORTCUTS and OS.is_debug_build() and not TutorialManager.is_active and not is_starting_match and not is_game_over
 
 func _process(delta: float) -> void:
+	_update_skip_extra_button()
 	_poll_tutorial_tips(delta)
+
+func _update_skip_extra_button() -> void:
+	if skip_extra_btn == null:
+		return
+	var show: bool = extra_skip_kind != "" and not is_game_over and not is_starting_match \
+		and current_turn == human_team and not _is_board_input_blocked()
+	skip_extra_btn.visible = show
+	if not show:
+		return
+	skip_extra_btn.text = {"step": "IGNORAR PASSO EXTRA", "fly": "IGNORAR 2ª JOGADA", "turn": "IGNORAR TURNO EXTRA"}.get(extra_skip_kind, "IGNORAR EXTRA")
+	skip_extra_btn.size = skip_extra_btn.get_combined_minimum_size().max(skip_extra_btn.custom_minimum_size)
+	var cx: float = board_offset.x + board.cols * cell_size * 0.5
+	skip_extra_btn.position = Vector2(cx - skip_extra_btn.size.x * 0.5, maxf(8.0, board_offset.y - skip_extra_btn.size.y - 10.0))
 
 # Dicas do tutorial que dependem de um estado do tabuleiro (não de um evento
 # pontual). Só roda enquanto o tutorial está ativo e a dica ainda não saiu.

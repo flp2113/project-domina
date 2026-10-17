@@ -40,7 +40,7 @@ func _build_card() -> void:
 
 	back_view = _build_back_view(rar_color, rarity_slug)
 	front_view = _build_front_view(rarity_slug, rar_color)
-	front_view.position = -card_root.pivot_offset
+	front_view.position = -_card_size / 2.0
 	card_root.add_child(front_view)
 
 	back_view.visible = not is_face_up
@@ -65,7 +65,7 @@ func _build_back_view(rar_color: Color, rarity_slug: String = "") -> Control:
 	holder.size = _card_size
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(_make_art_rect(load(back_path), _scaled_rect(_BACK_RECT)))
-	holder.position = -card_root.pivot_offset
+	holder.position = -_card_size / 2.0
 	card_root.add_child(holder)
 	return holder
 

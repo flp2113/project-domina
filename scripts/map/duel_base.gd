@@ -47,6 +47,11 @@ func uses_sudden_death() -> bool:
 func requires_full_elimination() -> bool:
 	return false
 
+# Chamado pelo controller a cada turno da IA: false = ela não tinha nenhum
+# movimento válido (exército totalmente bloqueado). Só o Chefe usa.
+func note_ai_turn(_had_move: bool) -> void:
+	pass
+
 # --- Lado inimigo (configurado por dificuldade; main.gd monta o duelo a partir daqui) ---
 
 # Leis fixas do modo (ex: Coroa de Ferro, Sapo Devorador). Aparecem na HUD inimiga.
@@ -61,10 +66,10 @@ func get_enemy_random_rule_count() -> int:
 func get_enemy_card_count() -> int:
 	return 2
 
-# Recompensa em ouro (economia: duelo comum ~7-14, elite ~13-22): base fixa +
+# Recompensa em ouro (economia: duelo comum ~7-18, elite ~13-26): base fixa +
 # capturas (com teto) + peças vivas (1 de ouro a cada 3, com teto).
-const CAPTURE_GOLD_CAP: int = 4
-const SURVIVAL_GOLD_CAP: int = 4
+const CAPTURE_GOLD_CAP: int = 6
+const SURVIVAL_GOLD_CAP: int = 6
 
 func get_base_gold() -> int:
 	return 6

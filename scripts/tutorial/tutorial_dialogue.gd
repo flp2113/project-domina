@@ -9,6 +9,9 @@ extends RefCounted
 #   "t"       texto
 #   "spot"    id de um trecho da tela a destacar (ex.: "board", "law_board", "hand")
 #   "caption" legenda do destaque
+#   "dim"     (só objetivos) escurecimento do resto da tela; 0.0 = sem escurecer.
+#             Use 0.0 quando a ação NÃO é clicar no destaque (ex.: mover uma peça
+#             até a fileira), senão o jogador acha que o resto da tela está travado.
 #   "who"     "evil" para o Irmão falar (padrão: o Guia)
 #   "flip"    "evil" gira o rosto do Guia (moeda) e vira o Irmão antes da fala
 #   "shake"   0..1, intensidade do tremor de tela enquanto a fala é digitada
@@ -53,8 +56,8 @@ static func get_objectives(step: int) -> Array:
 				{"event": "capture", "text": "Pule sobre a peça inimiga",
 				"spot": "cell:5,2", "caption": "PULE PARA CÁ",
 				"done_tip": "Capturada! A peça inimiga saiu do tabuleiro. Se houvesse outro salto na sequência, você continuaria no mesmo turno."},
-				{"event": "promotion", "text": "Leve uma peça até a última fileira",
-				"spot": "row:0", "caption": "FILEIRA DE COROAÇÃO",
+				{"event": "promotion", "text": "Mova suas peças até a última fileira (clique numa peça e depois na casa)",
+				"spot": "row:0", "caption": "LEVE UMA PEÇA ATÉ AQUI", "dim": 0.0,
 				"done_tip": "Coroada! A Dama anda e captura para os dois lados — e vale mais pontos."},
 				{"event": "duel_won", "text": "Vença o duelo", "spot": "", "caption": "",
 				"done_tip": ""},
@@ -76,14 +79,14 @@ static func get_objectives(step: int) -> Array:
 			]
 		TutorialManager.Step.DUEL_3_CARDS_AND_LAWS:
 			return [
-				{"event": "card_selected", "text": "Selecione uma Carta da sua mão",
-				"spot": "hand", "caption": "SUAS CARTAS",
+				{"event": "card_selected", "text": "Clique em uma Carta da sua mão para selecioná-la",
+				"spot": "hand", "caption": "CLIQUE EM UMA CARTA", "dim": 0.0,
 				"done_tip": "Cada Carta mostra o efeito ao passar o mouse. Algumas pedem um alvo no tabuleiro; outras agem na hora."},
 				{"event": "card_used", "text": "Use a Carta (clique no alvo, se pedir um)",
 				"spot": "", "caption": "",
 				"done_tip": "Perfeito! A Carta usada vai para o descarte até o fim do duelo."},
-				{"event": "law_triggered", "text": "Faça um passo simples e veja sua Lei agir",
-				"spot": "law_board", "caption": "SUAS LEIS",
+				{"event": "law_triggered", "text": "Mova uma peça (clique nela e depois na casa) e veja sua Lei agir",
+				"spot": "board", "caption": "MOVA UMA PEÇA", "dim": 0.0,
 				"done_tip": ""},
 				{"event": "duel_won", "text": "Vença o duelo", "spot": "", "caption": "",
 				"done_tip": ""},
@@ -208,9 +211,9 @@ static func get_flip_lines() -> Array:
 		{"t": "ELE NÃO...", "shake": 0.4},
 		{"t": "Espera... NÃO! Foi sem querer! Eu estou sendo... VIRADO!", "shake": 0.8},
 		{"flip": "evil", "t": "MUAHAHAHA!!! O GUIA SE COROOU SEM QUERER E A DAMA CAIU DO MEU LADO! Séculos esperando por esse acidente!", "shake": 1.0},
-		{"who": "evil", "t": "Eu sou o IRMÃO do Guia. Ele é o lado de cima. Fofo. EU SOU O LADO DE BAIXO. MALVADO. Muito. Mas MUITO malvado MUSHUSMHUAAHAHAHAHAHMUHAHAHAHAMAUHAHAUAUMAAHUAAMUAHAUHAHAHAMAUHAHAUAHAUAUHUAMAUHAHAHAHUHAAMAUAHUAAUHAUAMAUHUAHAUAMAUHAUHAMAAJNAUHAMAUHAUHAMAUHAUAMUAHUANAUHAUHAUAMUAHUAHUAMAUHAUHAUU.", "shake": 0.8},
+		{"who": "evil", "t": "Eu sou o IRMÃO do Guia. Ele é o lado de cima. Fofo. EU SOU O LADO DE BAIXO. MALVADO. Muito. Mas MUITO malvado MUSHUSMHUAAHAHAHAHAHMUHAHAHAHAMAUHAHAUAUMAAHUAAMUAHAUHAHAHAMAUHAHAUAHAUAUHUAMAUHAHAHAU.", "shake": 0.8},
 		{"who": "evil", "t": "Você conhece a regra da captura obrigatória? EU FUI QUE FIZ! E NEM GOSTO DELA!", "shake": 1.0},
-		{"who": "evil", "t": "TREMA DIANTE MINHA MALDADE JOGADOR! MUAHAHAHAHAHAAHAAHHAHAHAHA!!! sim seu sou o vilão final >:p", "shake": 1.0},
+		{"who": "evil", "t": "TREMA DIANTE MINHA MALDADE JOGADOR! MUAHAHAHAHAHA!!!", "shake": 1.0},
 	]
 
 static func get_finished_lines() -> Array:

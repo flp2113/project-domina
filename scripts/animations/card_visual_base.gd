@@ -33,7 +33,10 @@ func _setup_card_root(card_size: Vector2) -> void:
 	card_root.custom_minimum_size = card_size
 	card_root.size = card_size
 	card_root.position = card_size / 2.0
-	card_root.pivot_offset = card_size / 2.0
+	# O conteúdo é desenhado em [-metade, +metade] ao redor da origem do card_root,
+	# então o centro visual da carta é o pivô (0,0). Antes o pivô ficava em
+	# +metade (canto inferior direito), e a rotação/flip giravam em torno dele.
+	card_root.pivot_offset = Vector2.ZERO
 	card_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(card_root)
 
@@ -56,7 +59,7 @@ func _load_texture_or_fallback(tex_path: String, fallback_builder: Callable) -> 
 	else:
 		view = fallback_builder.call()
 
-	view.position = -card_root.pivot_offset
+	view.position = -_card_size / 2.0
 	card_root.add_child(view)
 	return view
 

@@ -121,6 +121,9 @@ func _init_default_deck() -> void:
 			# Debug ignora o limite de 20.
 			player_deck.append(card)
 		return
+	player_deck.append(CardSecondChance.new())
+	player_deck.append(CardLuckyDuel.new())
+	player_deck.append(CardCoinOfDestiny.new())
 	
 func add_gold(amount: int) -> void:
 	gold += amount
@@ -128,7 +131,7 @@ func add_gold(amount: int) -> void:
 # Ouro vindo de EFEITOS (Leis e Cartas: Carnificina, Vingança, Sacrifício,
 # Retaliação) tem teto por duelo, para não superar o ouro "normal" do duelo
 # (base ~6-12 + capturas/sobreviventes). Devolve quanto realmente entrou.
-const EFFECT_GOLD_CAP_PER_DUEL: int = 8
+const EFFECT_GOLD_CAP_PER_DUEL: int = 12
 var effect_gold_this_duel: int = 0
 
 func reset_effect_gold() -> void:

@@ -12,7 +12,7 @@ signal match_finished_by_points(won: bool, message: String)
 # de moedas da Lei do Empate Impossível acabar).
 var just_triggered: bool = false
 
-# Anti-impasse: sobraram poucas peças (ou só Damas) e ninguém captura há várias
+# Anti-impasse (SÓ NO CHEFE, quando stall_only = true): sobraram poucas peças (ou só Damas) e ninguém captura há várias
 # jogadas — a IA foge e o duelo nunca acabaria. Liga a Morte Súbita (pontos).
 const STALL_PLIES: int = 10          # jogadas seguidas sem mudar o nº de peças
 const STALL_MAX_PIECES: int = 6      # só vale com no máximo isso de peças no tabuleiro...
@@ -82,7 +82,9 @@ func check_conditions(board: Board, human_team: int, ai_team: int) -> void:
 	var triggered: bool = false
 	if not stall_only:
 		triggered = human_count == 1 or ai_count == 1 or new_king_promoted
-	if not triggered and _update_stall(board, human_count + ai_count - _count_inert_men(board)):
+	# O anti-impasse só existe no Chefe (stall_only); duelos normais seguem as
+	# regras de sempre (1 peça restante / nova Dama).
+	if stall_only and not triggered and _update_stall(board, human_count + ai_count - _count_inert_men(board)):
 		triggered = true
 		triggered_by_stall = true
 	if triggered:

@@ -50,6 +50,7 @@ func _setup_ui() -> void:
 	center_box.add_child(quit_btn)
 
 	_add_version_label(canvas)
+	_add_reset_button(canvas)
 
 	# Espaçador no fim: como a caixa é centralizada, ele empurra o conjunto
 	# (logo + botões) pra cima em MENU_RAISE_PX pixels. Ajuste aqui.
@@ -117,6 +118,48 @@ func _add_version_label(canvas: CanvasLayer) -> void:
 	lbl.offset_right = -16
 	lbl.offset_bottom = -10
 	canvas.add_child(lbl)
+
+# Apagar progresso: botão discreto no canto inferior esquerdo. Dois cliques (o
+# primeiro pede confirmação e desarma sozinho depois de alguns segundos). Zera
+# TUDO do Grimório (coroas, desbloqueios, kits, mochila, guias vistos) e recarrega
+# o menu. Mantém as configurações de tela (user://settings.cfg).
+var _reset_btn: Button = null
+var _reset_armed: bool = false
+var _reset_gen: int = 0
+
+func _add_reset_button(canvas: CanvasLayer) -> void:
+	_reset_btn = Button.new()
+	_reset_btn.text = "APAGAR PROGRESSO"
+	_reset_btn.custom_minimum_size = Vector2(330, 44)
+	_reset_btn.add_theme_font_size_override("font_size", 21)
+	_reset_btn.focus_mode = Control.FOCUS_NONE
+	_reset_btn.modulate = Color(1, 1, 1, 0.55)
+	PixelUI.skin_button(_reset_btn, Color(0.8, 0.3, 0.35))
+	_reset_btn.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_reset_btn.grow_horizontal = Control.GROW_DIRECTION_END
+	_reset_btn.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_reset_btn.offset_left = 16
+	_reset_btn.offset_bottom = -12
+	_reset_btn.pressed.connect(_on_reset_pressed)
+	canvas.add_child(_reset_btn)
+
+func _on_reset_pressed() -> void:
+	if not _reset_armed:
+		_reset_armed = true
+		_reset_gen += 1
+		var gen := _reset_gen
+		_reset_btn.text = "CLIQUE DE NOVO PARA APAGAR"
+		_reset_btn.modulate = Color(1, 1, 1, 1)
+		await get_tree().create_timer(4.0).timeout
+		if gen == _reset_gen and is_instance_valid(_reset_btn):
+			_reset_armed = false
+			_reset_btn.text = "APAGAR PROGRESSO"
+			_reset_btn.modulate = Color(1, 1, 1, 0.55)
+		return
+	_reset_gen += 1
+	MetaProgress.reset_all()
+	RunManager.start_new_run()  # descarta qualquer run em andamento
+	get_tree().call_deferred("change_scene_to_file", "res://main_menu.tscn")
 
 func _on_play_pressed() -> void:
 	# Quem nunca concluiu o tutorial recebe um aviso antes da primeira run.

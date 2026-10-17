@@ -20,7 +20,7 @@ func _build_ui() -> void:
 	panel = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(TOOLTIP_WIDTH, 0)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_theme_stylebox_override("panel", PixelUI.make_pixel_panel(Color(0.06, 0.08, 0.12, 0.98), Color(0.4, 0.75, 1.0), 18))
+	panel.add_theme_stylebox_override("panel", PixelUI.make_tooltip_panel())
 	add_child(panel)
 
 	effects_container = VBoxContainer.new()

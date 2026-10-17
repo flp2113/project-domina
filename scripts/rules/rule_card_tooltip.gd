@@ -64,10 +64,7 @@ func show_tooltip(rule: RuleCard, screen_pos: Vector2) -> void:
 	var cat_color: Color = RuleCard.get_category_color(rule.category)
 
 	# Atualiza o StyleBox do painel com a cor temática da regra na borda
-	panel.add_theme_stylebox_override(
-		"panel",
-		PixelUI.make_pixel_panel(Color(0.06, 0.08, 0.12, 0.98), cat_color, 18)
-	)
+	panel.add_theme_stylebox_override("panel", PixelUI.make_tooltip_panel(3, 8, cat_color))
 
 	# Atualiza o divisor com a cor temática correspondente
 	divider.color = Color(cat_color.r, cat_color.g, cat_color.b, 0.75)
@@ -79,7 +76,7 @@ func show_tooltip(rule: RuleCard, screen_pos: Vector2) -> void:
 		cat_color = BossLawFx.BOSS_COLOR
 		category_label.add_theme_color_override("font_color", cat_color)
 		divider.color = Color(cat_color.r, cat_color.g, cat_color.b, 0.9)
-		panel.add_theme_stylebox_override("panel", PixelUI.make_pixel_panel(Color(0.10, 0.05, 0.14, 0.98), cat_color, 18))
+		panel.add_theme_stylebox_override("panel", PixelUI.make_tooltip_panel(3, 8, cat_color))
 	if not rule.boss_law:
 		category_label.add_theme_color_override("font_color", cat_color)
 	desc_label.text = rule.description

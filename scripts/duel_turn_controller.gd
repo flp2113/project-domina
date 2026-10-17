@@ -211,6 +211,7 @@ func handle_cell_click(pos: Vector2i) -> void:
 			var from_pos: Vector2i = m["from"]
 			var moving_piece: BoardPiece = board.grid[from_pos.y][from_pos.x]
 			var was_capture: bool = m["is_capture"]
+			host.extra_skip_kind = ""   # jogou: a jogada de bônus (se havia) foi usada
 
 			host.moving_piece_tile = from_pos
 			host.selected_tile = Vector2i(-1, -1)
@@ -299,10 +300,12 @@ func handle_cell_click(pos: Vector2i) -> void:
 					host.selected_tile = pos
 					host.valid_moves_for_selected = second_moves
 					host.rule_banner_view.pop_rule_trigger(to_center, "MOVA DE NOVO!", Color(0.5, 0.85, 1.0))
+					host.extra_skip_kind = "fly"
 					return
 
 			if used_extra_step:
 				host.rule_banner_view.pop_rule_trigger(to_center, "PASSO EXTRA!", Color(0.4, 0.9, 0.5))
+				host.extra_skip_kind = "step"
 				# Sem essa checagem, se o jogador não tiver NENHUM movimento
 				# disponível pro passo extra, o jogo ficaria esperando pra
 				# sempre um clique que nunca poderia acontecer (softlock).
@@ -415,6 +418,7 @@ func play_ai_turn() -> void:
 	var board = host.board
 	var search_depth = 3 if max(board.rows, board.cols) >= 10 else 4
 	var ai_move = CheckersAI.get_best_move(board, search_depth, host.ai_team)
+	host.current_duel.note_ai_turn(not ai_move.is_empty())
 
 	var last_pos: Vector2i = await _ai_execute_move_chain(ai_move)
 
@@ -745,6 +749,27 @@ func _process_boss_law_events(boss_duel: DuelBoss) -> void:
 func end_turn() -> void:
 	await _conclude_turn(_host.human_team)
 
+# Botão "IGNORAR ... EXTRA": o jogador abre mão do passo extra, da 2ª jogada da
+# Dama Voadora ou do turno extra e passa a vez. O turno (e os eventos do chefe)
+# contam normalmente, como se ele tivesse jogado. Se sobrar outro turno extra
+# acumulado, _conclude_turn o concede em seguida.
+func skip_extra() -> void:
+	var host = _host
+	if host.extra_skip_kind == "" or host.is_game_over or host.is_ai_thinking \
+			or host.current_turn != host.human_team or host.is_resolving_card_effect:
+		return
+	var kind: String = host.extra_skip_kind
+	host.extra_skip_kind = ""
+	host.multi_jump_tile = Vector2i(-1, -1)
+	host.selected_tile = Vector2i(-1, -1)
+	host.valid_moves_for_selected = []
+	host.action_cards.cancel_selection()
+	await _process_boss_turn_events()
+	if kind == "turn":
+		await _conclude_turn(host.human_team)
+	else:
+		await end_turn()
+
 # Ponto único de conclusão de turno — usado tanto depois do jogador mover
 # (end_turn) quanto depois da IA mover (fim de play_ai_turn). Generalizado
 # por time: "Segundo Turno" agora funciona pra quem quer que tenha jogado a
@@ -752,6 +777,7 @@ func end_turn() -> void:
 func _conclude_turn(team_that_moved: int) -> void:
 	var host = _host
 	host.board.extra_move_piece = null
+	host.extra_skip_kind = ""
 
 	# Efeitos temporários das peças de quem acabou de jogar (Emboscada, Herdeiro).
 	for ev in host.board.tick_piece_effects(team_that_moved):
@@ -774,6 +800,7 @@ func _conclude_turn(team_that_moved: int) -> void:
 		)
 		if team_that_moved == host.human_team:
 			host.action_cards.on_turn_started()
+			host.extra_skip_kind = "turn"
 		else:
 			play_ai_turn()
 		return

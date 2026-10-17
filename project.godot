@@ -15,10 +15,10 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Domina"
-config/icon="res://icon.png"
-config/version="0.1.5-alpha"
+config/version="0.1.6-alpha"
 run/main_scene="res://main_menu.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
+config/icon="res://icon.png"
 
 [autoload]
 

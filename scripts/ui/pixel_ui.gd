@@ -4,6 +4,27 @@ extends RefCounted
 # Painel padrão do jogo (modais, tooltips, caixas): sprite de HUD 9-slice
 # (painel_mensagens) tingido pela cor de destaque. Se o sprite não existir,
 # cai no painel plano antigo (make_flat_panel). bg_color só vale no fallback.
+# Fundo de tooltip: sprite tooltip_fundo.png (64x40, moldura creme em fundo escuro)
+# esticado em 9 fatias, ampliado por inteiro. Todos os tooltips usam este.
+static func make_tooltip_panel(factor: int = 3, pad: int = 8, line_color: Color = Color.WHITE) -> StyleBox:
+	if not ResourceLoader.exists(HUD_DIR + "tooltip_fundo.png"):
+		return make_pixel_panel(Color(0.06, 0.08, 0.12, 0.98), Color(0.4, 0.75, 1.0), 18)
+	var style = StyleBoxTexture.new()
+	style.texture = hud_texture("tooltip_fundo", factor)
+	var m: int = 4 * factor   # borda escura + linha creme
+	style.texture_margin_left = m
+	style.texture_margin_right = m
+	style.texture_margin_top = m
+	style.texture_margin_bottom = m
+	style.content_margin_left = m + pad
+	style.content_margin_right = m + pad
+	style.content_margin_top = m + pad
+	style.content_margin_bottom = m + pad
+	# A moldura creme do sprite recebe a cor (categoria da Lei / raridade da Carta);
+	# o fundo escuro quase não muda com a multiplicação.
+	style.modulate_color = line_color
+	return style
+
 static func make_pixel_panel(bg_color: Color = Color(0.08, 0.09, 0.12, 0.96), border_color: Color = Color(0.28, 0.65, 1.0), padding: int = 8) -> StyleBox:
 	if not ResourceLoader.exists(HUD_DIR + "painel_mensagens.png"):
 		return make_flat_panel(bg_color, border_color, padding)

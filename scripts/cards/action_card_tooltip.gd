@@ -77,10 +77,7 @@ func show_tooltip(card: ActionCard, screen_pos: Vector2) -> void:
 
 	var rar_color: Color = ActionCardVisual.get_rarity_color(card.rarity)
 
-	panel.add_theme_stylebox_override(
-		"panel",
-		PixelUI.make_pixel_panel(Color(0.05, 0.07, 0.11, 0.98), rar_color, 18)
-	)
+	panel.add_theme_stylebox_override("panel", PixelUI.make_tooltip_panel(3, 8, rar_color))
 	divider.color = Color(rar_color.r, rar_color.g, rar_color.b, 0.85)
 
 	title_label.text = card.name.to_upper()

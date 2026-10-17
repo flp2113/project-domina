@@ -72,6 +72,7 @@ var objective_pips: HBoxContainer
 
 # Holofote
 var _overlay: Control
+var _blocker: Control
 var _line_spot_id: String = ""
 var _line_spot_caption: String = ""
 var _obj_spot_id: String = ""
@@ -104,6 +105,15 @@ func _build_ui() -> void:
 	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_overlay.draw.connect(_draw_overlay)
 	add_child(_overlay)
+
+	# Bloqueio de cliques: enquanto o Guia fala (ou o cartão de lição aparece) o
+	# jogador não pode mexer na cena por baixo (botões da Loja/Apostas, sair da
+	# cena...). Fica abaixo da caixa de diálogo, que continua clicável.
+	_blocker = Control.new()
+	_blocker.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+	_blocker.visible = false
+	add_child(_blocker)
 
 	# Camada de efeitos (vinheta vermelha, brasas, clarões): acima do holofote,
 	# abaixo da caixa de diálogo.
@@ -708,6 +718,8 @@ func play_title_card(kicker: String, title: String, subtitle: String = "") -> vo
 # ---------------------------------------------------------------------
 
 func _process(delta: float) -> void:
+	if _blocker != null:
+		_blocker.visible = is_showing_sequence or (_title_card != null and is_instance_valid(_title_card))
 	if objective_panel != null:
 		objective_panel.modulate.a = 0.0 if is_showing_sequence else 1.0
 	# Dica avulsa nunca aparece por cima de uma fala do Guia.
@@ -828,6 +840,16 @@ func _draw_overlay() -> void:
 
 	# Seta com legenda (só para alvos pequenos o bastante).
 	var big: bool = rect.size.x * rect.size.y > vp.x * vp.y * 0.28
+	# Alvo grande (ex.: o tabuleiro): sem seta; a legenda vai numa plaquinha no topo do destaque.
+	if caption != "" and big:
+		var bfont = ThemeDB.fallback_font
+		var bfs = 24
+		var btw = bfont.get_string_size(caption, HORIZONTAL_ALIGNMENT_LEFT, -1, bfs).x
+		var bbob = sin(_t * 6.0) * 4.0
+		var bbox = Rect2(rect.get_center().x - btw * 0.5 - 16.0, rect.position.y + 10.0 + bbob, btw + 32.0, 42.0)
+		_overlay.draw_rect(bbox, Color(0.08, 0.09, 0.13, 0.96))
+		_overlay.draw_rect(bbox, Color(1.0, 0.85, 0.3), false, 3.0)
+		_overlay.draw_string(bfont, Vector2(bbox.position.x + 16.0, bbox.position.y + 30.0), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, bfs, Color(1.0, 0.92, 0.6))
 	if caption != "" and not big:
 		var font = ThemeDB.fallback_font
 		var fs = 22

@@ -23,6 +23,7 @@ class Pop:
 	var t: float = 0.0
 
 var is_animating: bool = false
+var _skip: bool = false   # clique durante a contagem: mostra o placar final de uma vez
 
 var _pops: Array[Pop] = []
 var _rings: Array = []   # [pos, t, color]
@@ -36,6 +37,20 @@ var _show_scores: bool = false
 
 func _ready() -> void:
 	z_index = 60
+
+# Clique (ou Espaço/Enter) durante a contagem pula direto pro resultado.
+func _input(event: InputEvent) -> void:
+	if not is_animating or _skip:
+		return
+	var clicked: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT
+	var keyed: bool = event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
+	if clicked or keyed:
+		_skip = true
+		get_viewport().set_input_as_handled()
+
+func _sleep(t: float) -> void:
+	if not _skip:
+		await get_tree().create_timer(t).timeout
 
 func _process(delta: float) -> void:
 	if not is_animating and _pops.is_empty() and _rings.is_empty():
@@ -53,6 +68,7 @@ func _process(delta: float) -> void:
 # Devolve {"human": int, "ai": int}.
 func play(board: Board, board_offset: Vector2, cell_size: float, human_team: int, ai_team: int) -> Dictionary:
 	is_animating = true
+	_skip = false
 	_cell = cell_size
 	_human_score = 0
 	_ai_score = 0
@@ -73,15 +89,16 @@ func play(board: Board, board_offset: Vector2, cell_size: float, human_team: int
 
 	var total: int = mine.size() + theirs.size()
 	var step: float = clampf(MAX_COUNT_TIME / maxf(total, 1.0), 0.05, 0.22)
-	await get_tree().create_timer(0.35).timeout
+	await _sleep(0.35)
 
 	for entry in mine:
 		await _count_piece(entry[0], entry[1], board_offset, true, step)
-	await get_tree().create_timer(0.15).timeout
+	await _sleep(0.15)
 	for entry in theirs:
 		await _count_piece(entry[0], entry[1], board_offset, false, step)
 
-	await get_tree().create_timer(HOLD_TIME).timeout
+	# Pulou a contagem: o placar final fica só um instante na tela.
+	await get_tree().create_timer(0.6 if _skip else HOLD_TIME).timeout
 	_show_scores = false
 	is_animating = false
 	_pops.clear()
@@ -92,6 +109,14 @@ func play(board: Board, board_offset: Vector2, cell_size: float, human_team: int
 func _count_piece(cell: Vector2i, piece: BoardPiece, board_offset: Vector2, is_human: bool, step: float) -> void:
 	var king: bool = piece.is_king
 	var value: int = KING_VALUE if king else COMMON_VALUE
+	if _skip:
+		# Pulando: soma direto, sem "+1"/anéis nem espera.
+		if is_human:
+			_human_score += value
+		else:
+			_ai_score += value
+		queue_redraw()
+		return
 	var center = board_offset + Vector2(cell.x * _cell + _cell * 0.5, cell.y * _cell + _cell * 0.5)
 	var p = Pop.new()
 	p.pos = center
@@ -107,7 +132,7 @@ func _count_piece(cell: Vector2i, piece: BoardPiece, board_offset: Vector2, is_h
 		_ai_score += value
 		_ai_bump = 1.0
 	queue_redraw()
-	await get_tree().create_timer(step * (1.8 if king else 1.0)).timeout
+	await _sleep(step * (1.8 if king else 1.0))
 
 func _draw() -> void:
 	var font: Font = ThemeDB.fallback_font

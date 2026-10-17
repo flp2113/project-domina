@@ -8,6 +8,7 @@ const SAVE_PATH: String = "user://settings.cfg"
 const MAIN_MENU_PATH: String = "res://main_menu.tscn"
 const GEAR_SIZE: float = 48.0
 const GEAR_MARGIN: float = 14.0
+const CLOSE_X_SIZE: float = 44.0
 const RESOLUTIONS: Array[Vector2i] = [
 	Vector2i(1280, 720), Vector2i(1366, 768), Vector2i(1600, 900),
 	Vector2i(1920, 1080), Vector2i(2560, 1440), Vector2i(3840, 2160),
@@ -23,6 +24,8 @@ var resolution: Vector2i = Vector2i(1920, 1080)
 var screen_fx: bool = true   # tremor de tela + hit-stop (Juice.screen_fx)
 var _fx_btn: Button
 
+var _close_x: Button
+var _exit_sep: ColorRect
 var _gear_btn: Button
 var _backdrop: ColorRect
 var _panel: PanelContainer
@@ -32,8 +35,6 @@ var _res_prev: Button
 var _res_next: Button
 var _exit_btn: Button
 var _exit_armed: bool = false
-var _reset_btn: Button
-var _reset_armed: bool = false
 var _res_list: Array[Vector2i] = []
 var _apply_token: int = 0
 
@@ -168,7 +169,7 @@ func _build_ui() -> void:
 	_backdrop.add_child(center)
 
 	_panel = PanelContainer.new()
-	_panel.add_theme_stylebox_override("panel", PixelUI.make_pixel_panel(Color(0.14, 0.1, 0.17, 0.98), C_GOLD, 26))
+	_panel.add_theme_stylebox_override("panel", PixelUI.make_tooltip_panel(3, 18))   # mesmo fundo dos tooltips (tooltip_fundo.png)
 	center.add_child(_panel)
 
 	var v := VBoxContainer.new()
@@ -180,7 +181,7 @@ func _build_ui() -> void:
 	title.text = "CONFIGURAÇÕES"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 34)
-	title.add_theme_color_override("font_color", C_GOLD)
+	title.add_theme_color_override("font_color", BW_WHITE)
 	v.add_child(title)
 
 	v.add_child(_section_label("MODO DE TELA"))
@@ -211,7 +212,7 @@ func _build_ui() -> void:
 	_res_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_res_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_res_label.add_theme_font_size_override("font_size", 28)
-	_res_label.add_theme_color_override("font_color", C_CREAM)
+	_res_label.add_theme_color_override("font_color", BW_WHITE)
 	res_row.add_child(_res_label)
 	_res_next = _small_button(">")
 	_res_next.pressed.connect(_on_res_step.bind(1))
@@ -234,20 +235,12 @@ func _build_ui() -> void:
 	hint.name = "Hint"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_font_size_override("font_size", 16)
-	hint.add_theme_color_override("font_color", Color(0.6, 0.55, 0.65))
+	hint.add_theme_color_override("font_color", BW_GRAY)
 	v.add_child(hint)
 
-	v.add_child(_section_label("PROGRESSO"))
-	_reset_btn = Button.new()
-	_reset_btn.custom_minimum_size = Vector2(0, 52)
-	_reset_btn.add_theme_font_size_override("font_size", 22)
-	_reset_btn.focus_mode = Control.FOCUS_NONE
-	PixelUI.skin_button(_reset_btn, Color(0.8, 0.3, 0.35))
-	_reset_btn.pressed.connect(_on_reset_pressed)
-	v.add_child(_reset_btn)
-
-	var sep := ColorRect.new()
-	sep.color = Color(0.49, 0.39, 0.54, 0.6)
+	_exit_sep = ColorRect.new()
+	var sep := _exit_sep
+	sep.color = Color(BW_WHITE, 0.35)
 	sep.custom_minimum_size = Vector2(0, 2)
 	v.add_child(sep)
 
@@ -255,24 +248,64 @@ func _build_ui() -> void:
 	_exit_btn.custom_minimum_size = Vector2(0, 56)
 	_exit_btn.add_theme_font_size_override("font_size", 24)
 	_exit_btn.focus_mode = Control.FOCUS_NONE
-	PixelUI.skin_button(_exit_btn, Color(0.8, 0.3, 0.35))
+	_color_button(_exit_btn, C_RED)
 	_exit_btn.pressed.connect(_on_exit_pressed)
 	v.add_child(_exit_btn)
 
-	var close_btn := Button.new()
-	close_btn.text = "FECHAR"
-	close_btn.custom_minimum_size = Vector2(0, 56)
-	close_btn.add_theme_font_size_override("font_size", 24)
-	close_btn.focus_mode = Control.FOCUS_NONE
-	PixelUI.skin_button(close_btn, Color(0.3, 0.9, 0.4))
-	close_btn.pressed.connect(close)
-	v.add_child(close_btn)
+	# Fechar: "X" no canto superior direito da janela (posicionado depois do layout).
+	_close_x = Button.new()
+	_close_x.custom_minimum_size = Vector2(CLOSE_X_SIZE, CLOSE_X_SIZE)
+	_close_x.size = Vector2(CLOSE_X_SIZE, CLOSE_X_SIZE)
+	_close_x.focus_mode = Control.FOCUS_NONE
+	_close_x.tooltip_text = "Fechar"
+	PixelUI.skin_button(_close_x, C_RED, "", "icone_fechar")
+	_close_x.pressed.connect(close)
+	_backdrop.add_child(_close_x)
+	_panel.item_rect_changed.connect(func(): call_deferred("_place_close_x"))
+	_backdrop.visibility_changed.connect(_on_backdrop_visibility)
+
+func _on_backdrop_visibility() -> void:
+	if not _backdrop.visible:
+		return
+	# Espera o layout assentar (o painel só ganha tamanho depois de aparecer).
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_place_close_x()
+
+func _place_close_x() -> void:
+	if _close_x == null or _panel == null:
+		return
+	var r := _panel.get_global_rect()
+	var xs: Vector2 = _close_x.get_combined_minimum_size().max(_close_x.size)   # o skin pode ser maior que CLOSE_X_SIZE
+	_close_x.position = Vector2(r.end.x - xs.x - 20.0, r.position.y + 20.0) - _backdrop.global_position
+
+# --- Visual preto e branco da janela de configurações ---
+# Paleta tirada do ícone de X (icone_fechar.png): quase-preto e creme.
+const BW_BLACK := Color8(20, 14, 20)
+const BW_WHITE := Color8(247, 241, 226)
+const BW_GRAY := Color8(207, 194, 160)
+const BW_DIM := Color8(74, 58, 70)
+
+func _bw_box(bg: Color, border: Color, border_w: int = 3, margin: int = 10) -> StyleBoxFlat:
+	var st := StyleBoxFlat.new()
+	st.bg_color = bg
+	st.border_color = border
+	st.set_border_width_all(border_w)
+	st.set_content_margin_all(margin)
+	return st
+
+# Botões: o mesmo skin (PixelUI.skin_button) do menu inicial, tingido pela cor.
+func _color_button(b: Button, accent: Color, _on: bool = false) -> void:
+	PixelUI.skin_button(b, accent)
+
+const C_GREEN := Color(0.35, 0.8, 0.45)
+const C_RED := Color(0.9, 0.32, 0.36)
 
 func _section_label(t: String) -> Label:
 	var l := Label.new()
 	l.text = t
 	l.add_theme_font_size_override("font_size", 18)
-	l.add_theme_color_override("font_color", Color(0.81, 0.76, 0.65))
+	l.add_theme_color_override("font_color", BW_GRAY)
 	return l
 
 func _small_button(t: String) -> Button:
@@ -281,17 +314,17 @@ func _small_button(t: String) -> Button:
 	b.custom_minimum_size = Vector2(64, 52)
 	b.add_theme_font_size_override("font_size", 26)
 	b.focus_mode = Control.FOCUS_NONE
-	PixelUI.skin_button(b)
+	_color_button(b, C_GOLD)
 	return b
 
 func _refresh() -> void:
 	for i in range(_mode_btns.size()):
 		var on := i == display_mode
 		_mode_btns[i].button_pressed = on
-		PixelUI.skin_button(_mode_btns[i], Color(0.3, 0.9, 0.4) if on else Color.WHITE)
+		_color_button(_mode_btns[i], C_GREEN if on else Color.WHITE, on)
 	_fx_btn.button_pressed = screen_fx
 	_fx_btn.text = "LIGADOS" if screen_fx else "DESLIGADOS"
-	PixelUI.skin_button(_fx_btn, Color(0.3, 0.9, 0.4) if screen_fx else Color.WHITE)
+	_color_button(_fx_btn, C_GREEN if screen_fx else C_RED, screen_fx)
 	_res_list = _available_resolutions()
 	_res_label.text = "%d x %d" % [resolution.x, resolution.y]
 	var idx := _res_list.find(resolution)
@@ -303,10 +336,9 @@ func _refresh() -> void:
 	hint.text = "Janela tela cheia usa a resolução do monitor." if display_mode == 1 else ""
 	var in_menu := _in_main_menu()
 	_exit_btn.visible = not in_menu
+	_exit_sep.visible = not in_menu   # separador só existe para o botão de sair
 	_exit_armed = false
 	_exit_btn.text = "SAIR PARA O MENU"
-	_reset_armed = false
-	_reset_btn.text = "RESETAR PROGRESSO"
 
 func _in_main_menu() -> bool:
 	var s := get_tree().current_scene
@@ -362,21 +394,4 @@ func _on_exit_pressed() -> void:
 		TutorialManager.end_tutorial()
 	else:
 		MetaProgress.settle_run()  # abandonar a run também paga o que ela rendeu
-	get_tree().call_deferred("change_scene_to_file", MAIN_MENU_PATH)
-
-# Zera TUDO do Grimório (coroas, cartas/leis desbloqueadas, kits, mochila, guia
-# visto) e reinicia o jogo no menu principal. Dois cliques: o primeiro pede
-# confirmação. Mantém as configurações de tela (user://settings.cfg).
-func _on_reset_pressed() -> void:
-	if not _reset_armed:
-		_reset_armed = true
-		_reset_btn.text = "APAGAR TUDO? CLIQUE DE NOVO"
-		return
-	close()
-	if TutorialManager != null and TutorialManager.is_active:
-		TutorialManager.end_tutorial()
-	MetaProgress.reset_all()
-	RunManager.start_new_run()  # descarta a run em andamento (mapa, ouro, baralho, leis)
-	# change_scene_to_file recria o menu do zero (reload_current_scene falharia
-	# se a cena atual fosse a de uma run). Adiado para sair do callback do botão.
 	get_tree().call_deferred("change_scene_to_file", MAIN_MENU_PATH)
