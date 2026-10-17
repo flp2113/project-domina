@@ -121,9 +121,6 @@ func _init_default_deck() -> void:
 			# Debug ignora o limite de 20.
 			player_deck.append(card)
 		return
-	player_deck.append(CardSecondChance.new())
-	player_deck.append(CardLuckyDuel.new())
-	player_deck.append(CardCoinOfDestiny.new())
 	
 func add_gold(amount: int) -> void:
 	gold += amount
