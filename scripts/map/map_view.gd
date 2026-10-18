@@ -26,6 +26,7 @@ const TILES_BETWEEN_NODES: int = 3
 var generator = MapGenerator.new()
 var node_buttons: Dictionary = {}
 var node_size_labels: Dictionary = {}
+var node_layout_labels: Dictionary = {}
 var lines_dictionary: Dictionary = {}
 
 var forest: ForestBackground
@@ -69,6 +70,9 @@ func _ready() -> void:
 		pawn_rest_node = RunManager.current_node
 		player_pawn.visible = false
 		_set_current_node(RunManager.current_node, false)
+
+	if DebugFlags.SHORTCUTS:
+		_build_debug_hint()
 
 func _setup_player_pawn() -> void:
 	player_pawn = MapPlayerPawn.new()
@@ -122,6 +126,33 @@ func _input(event: InputEvent) -> void:
 			is_traveling = true
 			SceneTransition.go("res://event_view.tscn")
 			get_viewport().set_input_as_handled()
+		elif DebugFlags.SHORTCUTS and event.keycode >= KEY_1 and event.keycode <= KEY_6:
+			# DEBUG: abre um duelo de CHEFE direto, com a lei escolhida
+			# (1 Sapo, 2 Coruja, 3 Floresta, 4 Cipós, 5 Vaga-lumes, 6 Raízes).
+			var law_idx: int = event.keycode - KEY_1
+			if law_idx < DuelBoss.LAWS.size():
+				RunManager.forest_boss_law_id = DuelBoss.LAWS[law_idx]
+				RunManager.current_node_type = MapNode.NodeType.Chefe
+				RunManager.current_board_size = Vector2i(10, 10)
+				RunManager.current_board_layout = Board.LAYOUT_CLASSIC
+				is_traveling = true
+				SceneTransition.go("res://main.tscn")
+				get_viewport().set_input_as_handled()
+
+# DEBUG: lembrete das teclas de atalho do mapa (só com DebugFlags.SHORTCUTS).
+func _build_debug_hint() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 90
+	add_child(layer)
+	var lbl := Label.new()
+	lbl.text = "DEBUG  CHEFE: 1 Sapo  2 Coruja  3 Floresta  4 Cipós  5 Vaga-lumes  6 Raízes   |   B Apostas   E Evento"
+	lbl.add_theme_font_size_override("font_size", 16)
+	lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
+	lbl.add_theme_color_override("font_outline_color", Color(0.05, 0.03, 0.08))
+	lbl.add_theme_constant_override("outline_size", 5)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl.position = Vector2(16, 8)
+	layer.add_child(lbl)
 
 func _position_nodes(layers: Array[Array]) -> void:
 	# O sorteio de deslocamento horizontal pode deixar dois nós ligados longe
@@ -313,6 +344,20 @@ func _instantiate_node_ui(layers: Array[Array]) -> void:
 				size_label.position = Vector2(0, node_px.y + 6)
 				btn.add_child(size_label)
 				node_size_labels[node] = size_label
+				# Disposição especial: nome pequeno logo abaixo do tamanho.
+				if node.has_special_layout():
+					var layout_label = Label.new()
+					layout_label.text = node.get_layout_text()
+					layout_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+					layout_label.add_theme_font_size_override("font_size", 24)
+					layout_label.add_theme_color_override("font_color", Color(0.75, 0.9, 1.0))
+					layout_label.add_theme_color_override("font_outline_color", Color(0.05, 0.03, 0.02))
+					layout_label.add_theme_constant_override("outline_size", 6)
+					layout_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+					layout_label.size = Vector2(node_px.x, 30)
+					layout_label.position = Vector2(0, 36)
+					size_label.add_child(layout_label)
+					node_layout_labels[node] = layout_label
 
 func _on_node_hover(node: MapNode, entered: bool) -> void:
 	_hovered_node = node if entered else (null if _hovered_node == node else _hovered_node)
@@ -387,6 +432,9 @@ func _update_nodes_visual_state() -> void:
 		MapNodeArt.apply(btn, base, ind, _NODE_SPRITES.get(node.type, "nodo_batalha"), sprite_name, ind_name, overlay_name, boss_suffix, node == pawn_rest_node)
 		if size_label:
 			size_label.add_theme_color_override("font_color", label_col)
+		var layout_label: Label = node_layout_labels.get(node)
+		if layout_label:
+			layout_label.add_theme_color_override("font_color", label_col.lerp(Color(0.75, 0.9, 1.0), 0.6))
 	_refresh_lines()
 
 func _on_node_clicked(node: MapNode) -> void:
@@ -414,6 +462,7 @@ func _on_node_clicked(node: MapNode) -> void:
 	_update_nodes_visual_state()
 	
 	RunManager.current_board_size = node.board_size
+	RunManager.current_board_layout = node.board_layout
 	RunManager.current_node_type = node.type
 	
 	match node.type:

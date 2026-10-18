@@ -184,3 +184,7 @@ func _execute_selected_card(pos: Vector2i) -> void:
 	cancel_selection()
 	_host.update_gold_display()
 	_host.queue_redraw()
+
+	# Carta que tirou a última peça de um lado (Duelo de Sorte, Cara ou Coroa
+	# Triplo, Moeda do Destino...): encerra o duelo agora em vez de travar.
+	await _host.turn_controller.check_elimination()

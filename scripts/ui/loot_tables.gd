@@ -26,7 +26,8 @@ static func get_all_rules() -> Array[RuleCard]:
 		RuleWeight.new(),
 		RuleMourning.new(),
 		RuleEcho.new(),
-		RuleFaithfulCoin.new()
+		RuleFaithfulCoin.new(),
+		RuleLastChance.new()
 	]
 	return rules
 
@@ -68,7 +69,9 @@ static func get_all_action_cards() -> Array[ActionCard]:
 		CardFlyingQueen.new(),
 		CardGuillotine.new(),
 		CardAmbush.new(),
-		CardScorchedEarth.new()
+		CardScorchedEarth.new(),
+		CardTripleToss.new(),
+		CardLightUp.new()
 	]
 	return cards
 

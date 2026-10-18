@@ -48,7 +48,7 @@ func _build_ui() -> void:
 	center.add_child(panel)
 
 	var v := VBoxContainer.new()
-	v.custom_minimum_size = Vector2(760, 0)
+	v.custom_minimum_size = Vector2(980, 0)
 	v.add_theme_constant_override("separation", 16)
 	panel.add_child(v)
 
@@ -71,10 +71,12 @@ func _build_ui() -> void:
 	v.add_child(sub)
 
 	v.add_child(_divider())
+	_build_run_summary(v)
+	v.add_child(_divider())
 
 	_rows_box = VBoxContainer.new()
 	_rows_box.add_theme_constant_override("separation", 12)
-	_rows_box.custom_minimum_size = Vector2(0, 150)
+	_rows_box.custom_minimum_size = Vector2(0, 90)
 	v.add_child(_rows_box)
 
 	v.add_child(_divider())
@@ -119,6 +121,77 @@ func _build_ui() -> void:
 	btns.add_child(_meta_btn)
 	_menu_btn.disabled = true
 	_meta_btn.disabled = true
+
+# Resumo da run: quadradinhos de estatística + as Leis e Cartas que o jogador levou.
+func _build_run_summary(parent: VBoxContainer) -> void:
+	var laws: Array = _summary.get("laws", [])
+	var cards: Array = _summary.get("cards", [])
+	var duels: int = int(_summary["duels"]) + int(_summary["strong"]) + (1 if bool(_summary["boss"]) else 0)
+
+	var tiles := HBoxContainer.new()
+	tiles.alignment = BoxContainer.ALIGNMENT_CENTER
+	tiles.add_theme_constant_override("separation", 14)
+	parent.add_child(tiles)
+	tiles.add_child(_stat_tile("VITÓRIAS", str(duels)))
+	tiles.add_child(_stat_tile("DUELOS FORTES", str(int(_summary["strong"]))))
+	tiles.add_child(_stat_tile("LEIS", str(laws.size())))
+	tiles.add_child(_stat_tile("CARTAS", str(cards.size())))
+	tiles.add_child(_stat_tile("OURO FINAL", str(int(_summary.get("gold", 0)))))
+
+	parent.add_child(_chip_section("LEIS USADAS", laws))
+	parent.add_child(_chip_section("CARTAS NO BARALHO", cards))
+
+func _stat_tile(title: String, value: String) -> Control:
+	var pc := PanelContainer.new()
+	pc.add_theme_stylebox_override("panel", PixelUI.make_flat_panel(Color(0.17, 0.12, 0.21, 0.95), Color(0.49, 0.39, 0.54), 8))
+	var col := VBoxContainer.new()
+	col.custom_minimum_size = Vector2(160, 0)
+	col.add_theme_constant_override("separation", 2)
+	pc.add_child(col)
+	var val := Label.new()
+	val.text = value
+	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	val.add_theme_font_size_override("font_size", 36)
+	val.add_theme_color_override("font_color", C_GOLD)
+	col.add_child(val)
+	var t := Label.new()
+	t.text = title
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	t.add_theme_font_size_override("font_size", 18)
+	t.add_theme_color_override("font_color", Color(0.81, 0.76, 0.65))
+	col.add_child(t)
+	return pc
+
+func _chip_section(title: String, items: Array) -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	var h := Label.new()
+	h.text = title
+	h.add_theme_font_size_override("font_size", 18)
+	h.add_theme_color_override("font_color", Color(0.81, 0.76, 0.65))
+	box.add_child(h)
+	if items.is_empty():
+		var none := Label.new()
+		none.text = "Nenhuma."
+		none.add_theme_font_size_override("font_size", 18)
+		none.add_theme_color_override("font_color", Color(0.6, 0.55, 0.65))
+		box.add_child(none)
+		return box
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 8)
+	flow.add_theme_constant_override("v_separation", 8)
+	box.add_child(flow)
+	for it in items:
+		var col: Color = ActionCardVisual.get_rarity_color(int(it["rarity"]))
+		var chip := PanelContainer.new()
+		chip.add_theme_stylebox_override("panel", PixelUI.make_flat_panel(Color(0.12, 0.08, 0.15, 0.98), col, 6))
+		var l := Label.new()
+		l.text = str(it["name"])
+		l.add_theme_font_size_override("font_size", 18)
+		l.add_theme_color_override("font_color", col)
+		chip.add_child(l)
+		flow.add_child(chip)
+	return box
 
 func _divider() -> ColorRect:
 	var d := ColorRect.new()

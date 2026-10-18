@@ -25,6 +25,9 @@ func execute(board: Board, target_pos: Vector2i, _human_team: int, context: Dict
 	var piece: BoardPiece = board.grid[target_pos.y][target_pos.x]
 	if piece == Board.EMPTY:
 		return
+	# Última Chance: salva = continua Dama (o próprio perigo era virar peça comum).
+	if await RuleLastChance.try_save(context.get("main"), target_pos, piece, true):
+		return
 	piece.is_king = false
 	piece.temp_king_turns = 0
 	_pop_banner(context, "REBAIXADA!", Color(0.9, 0.45, 0.4), target_pos)

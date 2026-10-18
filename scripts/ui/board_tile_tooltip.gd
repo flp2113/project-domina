@@ -30,7 +30,11 @@ func _build_ui() -> void:
 
 # effects: Array de {"title": String, "desc": String, "affects": "player"/"enemy"/"both", "title_color": Color}
 func show_effects(effects: Array, screen_pos: Vector2, human_team: int, ai_team: int) -> void:
+	# remove_child ANTES do queue_free: senão os blocos antigos ainda contam no
+	# layout deste frame e o painel fica do tamanho do tooltip anterior (cresce e
+	# nunca encolhe).
 	for child in effects_container.get_children():
+		effects_container.remove_child(child)
 		child.queue_free()
 
 	if effects.is_empty():
@@ -98,6 +102,7 @@ func show_effects(effects: Array, screen_pos: Vector2, human_team: int, ai_team:
 
 	panel.modulate = Color.TRANSPARENT
 	visible = true
+	panel.size = Vector2(TOOLTIP_WIDTH, 0)
 	panel.reset_size()
 	_reposition.call_deferred(screen_pos)
 

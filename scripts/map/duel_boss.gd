@@ -5,7 +5,17 @@ extends DuelHard
 const LAW_FROG := "frog_devourer"
 const LAW_OWL := "owl_night"
 const LAW_FOREST := "closing_forest"
-const LAWS := [LAW_FROG, LAW_OWL, LAW_FOREST]
+const LAW_VINES := "vines"
+const LAW_FIREFLIES := "fireflies"
+const LAW_ROOTS := "hungry_roots"
+const LAWS := [LAW_FROG, LAW_OWL, LAW_FOREST, LAW_VINES, LAW_FIREFLIES, LAW_ROOTS]
+
+# Leis das casas CLARAS (Cipós / Vaga-lumes): quantos e de quanto em quanto tempo.
+const VINE_COUNT := 3
+const VINE_INTERVAL_PLIES := 8       # 8 jogadas = 4 rodadas
+const FIREFLY_COUNT := 3
+const FIREFLY_INTERVAL_PLIES := 2    # 1 passo por rodada
+const FIREFLY_ANIM_MS := 600
 
 # Ciclo em "jogadas" (cada lado que termina o turno = 1): 6 jogadas = 3 rodadas.
 const DAY_PLIES := 6
@@ -19,6 +29,12 @@ var law_id: String = LAW_FROG
 var is_night: bool = false
 var _phase_ply: int = 0
 var _tree_ply: int = 0
+var _vine_ply: int = 0
+var _firefly_ply: int = 0
+# Próximo passo de cada vaga-lume (Vector2i origem -> destino), mostrado no tabuleiro.
+var firefly_plan: Dictionary = {}
+# Último passo (pra o renderer deslizar a luz): [{"from","to","t0"(ms)}]
+var firefly_moves: Array = []
 
 func _init() -> void:
 	if RunManager != null:
@@ -45,6 +61,10 @@ func setup(p_board: Board, p_human_team: int, p_ai_team: int, p_sudden_death_mgr
 	is_night = false
 	_phase_ply = 0
 	_tree_ply = 0
+	_vine_ply = 0
+	_firefly_ply = 0
+	firefly_plan = {}
+	firefly_moves = []
 
 func apply_board_modifiers() -> void:
 	board.night_boost_team = 0
@@ -55,6 +75,12 @@ func apply_board_modifiers() -> void:
 		LAW_FOREST:
 			for i in range(TREE_START_COUNT):
 				_spawn_tree(true)
+		LAW_VINES:
+			_roll_vines()
+		LAW_FIREFLIES:
+			_spawn_fireflies()
+		LAW_ROOTS:
+			board.hungry_roots_team = human_team
 
 # O chefe não herda a Coroa de Ferro do Duelo Forte: o slot inimigo mostra
 # o Sapo Devorador (Lei só descritiva — a mecânica vive aqui e na view do sapo).
@@ -65,6 +91,12 @@ func get_enemy_fixed_rules() -> Array[RuleCard]:
 			rules.append(RuleOwlNight.new())
 		LAW_FOREST:
 			rules.append(RuleClosingForest.new())
+		LAW_VINES:
+			rules.append(RuleVines.new())
+		LAW_FIREFLIES:
+			rules.append(RuleFireflies.new())
+		LAW_ROOTS:
+			rules.append(RuleHungryRoots.new())
 		_:
 			rules.append(RuleFrogDevourer.new())
 	return rules
@@ -167,7 +199,81 @@ func advance_turn() -> Array:
 				var pos = _spawn_tree(false)
 				if pos != Vector2i(-1, -1):
 					events.append({"type": "trees", "tiles": [pos]})
+		LAW_VINES:
+			_vine_ply += 1
+			if _vine_ply >= VINE_INTERVAL_PLIES:
+				_vine_ply = 0
+				_roll_vines()
+				events.append({"type": "vines", "tiles": board.vine_tiles.keys()})
+		LAW_FIREFLIES:
+			_firefly_ply += 1
+			if _firefly_ply >= FIREFLY_INTERVAL_PLIES:
+				_firefly_ply = 0
+				_move_fireflies()
+				events.append({"type": "fireflies", "tiles": board.firefly_tiles.keys()})
 	return events
+
+# --- Cipós / Vaga-lumes (casas CLARAS: (r+c) par; nenhuma peça pisa nelas) ---
+
+# Casas claras do miolo do tabuleiro (a travessia do cipó precisa de casa dos
+# dois lados, então ficam longe das bordas).
+func _light_tiles(margin: int) -> Array:
+	var out: Array = []
+	for r in range(margin, board.rows - margin):
+		for c in range(margin, board.cols - margin):
+			if (r + c) % 2 == 0:
+				out.append(Vector2i(c, r))
+	return out
+
+func _roll_vines() -> void:
+	board.vine_tiles.clear()
+	var tiles: Array = _light_tiles(1)
+	tiles.shuffle()
+	for i in range(mini(VINE_COUNT, tiles.size())):
+		board.vine_tiles[tiles[i]] = true
+
+func _spawn_fireflies() -> void:
+	board.firefly_tiles.clear()
+	var tiles: Array = _light_tiles(1)
+	tiles.shuffle()
+	for i in range(mini(FIREFLY_COUNT, tiles.size())):
+		board.firefly_tiles[tiles[i]] = true
+	firefly_moves = []
+	_plan_fireflies()
+
+# Sorteia o próximo passo de cada vaga-lume (diagonal = casa clara vizinha).
+func _plan_fireflies() -> void:
+	firefly_plan = {}
+	var taken: Dictionary = board.firefly_tiles.duplicate()
+	var flies: Array = board.firefly_tiles.keys()
+	flies.shuffle()
+	for pos in flies:
+		var options: Array = []
+		for d in [Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)]:
+			var q: Vector2i = pos + d
+			if q.x < 0 or q.y < 0 or q.x >= board.cols or q.y >= board.rows:
+				continue
+			if taken.has(q):
+				continue
+			options.append(q)
+		if options.is_empty():
+			firefly_plan[pos] = pos
+			continue
+		var dest: Vector2i = options[randi() % options.size()]
+		taken[dest] = true
+		firefly_plan[pos] = dest
+
+func _move_fireflies() -> void:
+	var now: int = Time.get_ticks_msec()
+	firefly_moves = []
+	var new_tiles: Dictionary = {}
+	for pos in board.firefly_tiles.keys():
+		var dest: Vector2i = firefly_plan.get(pos, pos)
+		new_tiles[dest] = true
+		if dest != pos:
+			firefly_moves.append({"from": pos, "to": dest, "t0": now})
+	board.firefly_tiles = new_tiles
+	_plan_fireflies()
 
 func count_trees() -> int:
 	var n = 0

@@ -35,13 +35,17 @@ func execute(board: Board, target_pos: Vector2i, human_team: int, context: Dicti
 	var captured_enemy: bool = await coin_view.flip_completed
 
 	if captured_enemy:
-		board.grid[target_pos.y][target_pos.x] = Board.EMPTY
+		main_node.is_resolving_card_effect = false
+		# Última Chance: a vítima pode ser uma Dama do jogador (carta da IA).
+		if not await RuleLastChance.try_save(main_node, target_pos, enemy_piece):
+			board.grid[target_pos.y][target_pos.x] = Board.EMPTY
 	else:
-		_capture_random_own_piece(board, human_team)
+		main_node.is_resolving_card_effect = false
+		await _capture_random_own_piece(board, human_team, main_node)
 
 	main_node.is_resolving_card_effect = false
 
-func _capture_random_own_piece(board: Board, team: int) -> void:
+func _capture_random_own_piece(board: Board, team: int, main_node = null) -> void:
 	var own_positions: Array = []
 	for r in range(board.rows):
 		for c in range(board.cols):
@@ -51,4 +55,7 @@ func _capture_random_own_piece(board: Board, team: int) -> void:
 	if own_positions.is_empty():
 		return
 	var chosen: Vector2i = own_positions[randi() % own_positions.size()]
+	# Última Chance: se a sorteada for a Dama do jogador, a moeda gira antes.
+	if await RuleLastChance.try_save(main_node, chosen, board.grid[chosen.y][chosen.x]):
+		return
 	board.grid[chosen.y][chosen.x] = Board.EMPTY

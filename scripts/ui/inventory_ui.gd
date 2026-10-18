@@ -247,6 +247,10 @@ func _create_law_slot(rule: RuleCard) -> Control:
 			RunManager.remove_rule(rule.id)
 			refresh_laws()
 	)
+	# Tutorial: revogar leis fica bloqueado (evita quebrar a lição).
+	if TutorialManager.is_active:
+		revoke_btn.disabled = true
+		revoke_btn.visible = false
 	wrapper.add_child(revoke_btn)
 
 	return wrapper

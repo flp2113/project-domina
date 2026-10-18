@@ -148,6 +148,8 @@ func _setup_board(size: Vector2i, node_type: int) -> void:
 
 	if max_dim >= 12:
 		cell_size = 64.0
+	elif max_dim == 9:
+		cell_size = 80.0
 	elif max_dim >= 10:
 		cell_size = 74.0
 	elif max_dim <= 6:
@@ -177,6 +179,10 @@ func _setup_board(size: Vector2i, node_type: int) -> void:
 	board_offset = Vector2(center_x, center_y)
 
 	board = Board.new(b_rows, b_cols)
+	# Disposição sorteada no mapa (só duelos comuns/fortes; tutorial/chefe/emboscada = clássica).
+	if not TutorialManager.is_active and (node_type == MapNode.NodeType.Duelo or node_type == MapNode.NodeType.DueloForte) \
+			and RunManager.ambush_kind == "" and Board.LAYOUT_IDS.has(RunManager.current_board_layout):
+		board.layout_id = RunManager.current_board_layout
 	board.skin_id = BoardSkin.SKIN_TUTORIAL if TutorialManager.is_active else BoardSkin.SKIN_WOOD
 	board.set_theme_for_duel(node_type == MapNode.NodeType.DueloForte or node_type == MapNode.NodeType.Chefe)
 	board.piece_destroyed.connect(_on_board_piece_destroyed)

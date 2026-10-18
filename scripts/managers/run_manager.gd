@@ -1,6 +1,8 @@
 extends Node
 
 var current_board_size: Vector2i = Vector2i(8, 8)
+# Disposição inicial das peças do duelo atual (Board.LAYOUT_*); só duelos sorteados usam outra.
+var current_board_layout: String = Board.LAYOUT_CLASSIC
 var current_node_type: int = 1
 var gold: int = 0
 
@@ -92,6 +94,7 @@ func start_new_run():
 	gold = 0
 	shop_purchases = 0
 	current_board_size = Vector2i(8, 8)
+	current_board_layout = Board.LAYOUT_CLASSIC
 	current_node_type = 1
 	map_data = []
 	current_node = null

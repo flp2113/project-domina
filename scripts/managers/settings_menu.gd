@@ -129,6 +129,11 @@ func _available_resolutions() -> Array[Vector2i]:
 # ---------------------------------------------------------------------
 # UI
 # ---------------------------------------------------------------------
+# A abertura (SplashView) esconde a engrenagem enquanto toca a logo.
+func set_gear_visible(v: bool) -> void:
+	if _gear_btn != null:
+		_gear_btn.visible = v
+
 func _build_ui() -> void:
 	_gear_btn = Button.new()
 	_gear_btn.custom_minimum_size = Vector2(GEAR_SIZE, GEAR_SIZE)

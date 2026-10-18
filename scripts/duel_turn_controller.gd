@@ -414,6 +414,10 @@ func play_ai_turn() -> void:
 	if ai_deck_mgr != null:
 		ai_deck_mgr.on_turn_started()
 		await _maybe_play_ai_card()
+		# Carta da IA que eliminou o último do jogador (ou o dela): fim de duelo já.
+		if await check_elimination():
+			host.is_ai_thinking = false
+			return
 
 	var board = host.board
 	var search_depth = 3 if max(board.rows, board.cols) >= 10 else 4
@@ -468,7 +472,17 @@ func _ai_execute_move_chain(ai_move: Dictionary) -> Vector2i:
 		await host.piece_movement_view.play_move_jump(from_center, to_center, moving_piece, host.cell_size, was_capture)
 		host.moving_piece_tile = Vector2i(-1, -1)
 
+		# Última Chance: se a vítima é uma Dama do jogador, a moeda gira ANTES do
+		# golpe; salva = a captura falha (como no Escudo) e a Dama é rebaixada/coroada.
+		if was_capture:
+			var vp: Vector2i = ai_move["captured"]
+			var victim: BoardPiece = board.grid[vp.y][vp.x]
+			if victim != Board.EMPTY and victim.is_king and not victim.is_tree and not RuleLastChance.capture_already_covered(board, victim):
+				if await RuleLastChance.try_save(host, vp, victim):
+					board.last_chance_piece = victim
+
 		var promoted = board.make_move(ai_move)
+		board.last_chance_piece = null
 
 		# Capturas da IA não rendem ouro (DuelBase.on_piece_captured é só do
 		# jogador); só marcam que o jogador perdeu uma peça (Retaliação) — e
@@ -737,6 +751,12 @@ func _process_boss_law_events(boss_duel: DuelBoss) -> void:
 			"dawn":
 				host.rule_banner_view.pop_rule_trigger(center, "AMANHECE!", Color(1.0, 0.85, 0.35))
 				await get_tree().create_timer(0.7).timeout
+			"vines":
+				host.rule_banner_view.pop_rule_trigger(center, "OS CIPÓS SE MOVEM!", Color(0.45, 0.9, 0.4))
+				await get_tree().create_timer(0.5).timeout
+			"fireflies":
+				# Sem banner (acontece toda rodada): o renderer desliza as luzes.
+				pass
 			"trees":
 				host.rule_banner_view.pop_rule_trigger(center, "A FLORESTA SE FECHA!", Color(0.45, 0.9, 0.4))
 				var tw = create_tween().set_parallel(true)
@@ -787,6 +807,14 @@ func _conclude_turn(team_that_moved: int) -> void:
 				host.board_offset + Vector2(hp.x * host.cell_size + host.cell_size / 2.0, hp.y * host.cell_size + host.cell_size / 2.0),
 				"COROA PERDIDA", Color(0.8, 0.7, 0.9))
 
+	# Raízes Famintas (lei de chefe): quem capturou fica enraizado no próximo turno.
+	var root_spots: Array = host.board.apply_hungry_roots(team_that_moved)
+	if not root_spots.is_empty() and host.rule_banner_view != null:
+		var rp: Vector2i = root_spots[0]
+		host.rule_banner_view.pop_rule_trigger(
+			host.board_offset + Vector2(rp.x * host.cell_size + host.cell_size / 2.0, rp.y * host.cell_size + host.cell_size / 2.0),
+			"ENRAIZADA!", Color(0.45, 0.85, 0.35))
+
 	if await check_game_over():
 		return
 
@@ -834,6 +862,17 @@ func trigger_game_over(won: bool, rewards: Dictionary = {}, custom_title: String
 	if not TutorialManager.is_active and won:
 		MetaProgress.register_duel_win(RunManager.current_node_type)
 	host.game_over_modal.show_game_over(won, rewards, custom_title, defeat_message)
+
+# Cartas (e outros efeitos fora de jogada) podem tirar a ÚLTIMA peça de um lado.
+# Sem checar na hora, o duelo ficava parado com o tabuleiro vazio até o próximo
+# fim de turno que nunca vinha. Só age se algum lado ficou sem peças.
+func check_elimination() -> bool:
+	var host = _host
+	if host.is_game_over:
+		return true
+	if host.board.count_pieces(host.human_team) > 0 and host.board.count_pieces(host.ai_team) > 0:
+		return false
+	return await check_game_over()
 
 func check_game_over() -> bool:
 	var host = _host

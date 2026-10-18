@@ -5,8 +5,29 @@ const MAP_SCENE_PATH: String = "res://map_view.tscn"
 const META_SCENE_PATH: String = "res://meta_view.tscn"
 const TUTORIAL_MAP_SCENE_PATH: String = "res://tutorial_map_view.tscn"
 
+# A abertura (splash) liga isto antes de trocar de cena: o menu então surge
+# do preto em vez de aparecer de uma vez.
+static var fade_in_pending: bool = false
+const FADE_IN_SEC: float = 0.9
+
 func _ready() -> void:
 	_setup_ui()
+	if fade_in_pending:
+		fade_in_pending = false
+		_play_fade_in()
+
+func _play_fade_in() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 200
+	add_child(layer)
+	var black := ColorRect.new()
+	black.color = Color.BLACK
+	black.set_anchors_preset(Control.PRESET_FULL_RECT)
+	black.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(black)
+	var tw := create_tween()
+	tw.tween_property(black, "color:a", 0.0, FADE_IN_SEC)
+	tw.tween_callback(layer.queue_free)
 
 # Quanto o logo + botões sobem em relação ao centro da tela.
 const MENU_RAISE_PX: float = 70.0

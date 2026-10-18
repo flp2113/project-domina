@@ -64,7 +64,7 @@ func _generate_laws_stock() -> void:
 	# Tutorial: a Loja vende só o que a lição precisa (estoque didático).
 	if TutorialManager.is_active:
 		for rule in LootTables.get_all_rules():
-			if TutorialManager.SHOP_LAW_IDS.has(rule.id):
+			if TutorialManager.SHOP_LAW_IDS.has(rule.id) and not _tutorial_owns_rule(rule.id):
 				laws_for_sale.append(rule)
 		return
 	var owned_rule_ids: Array[String] = []
@@ -73,6 +73,14 @@ func _generate_laws_stock() -> void:
 			owned_rule_ids.append(r.id)
 
 	laws_for_sale = LootTables.get_random_rules(3, owned_rule_ids)
+
+func _tutorial_owns_rule(rule_id: String) -> bool:
+	if RunManager == null:
+		return false
+	for r in RunManager.active_rules:
+		if r.id == rule_id:
+			return true
+	return false
 
 func _reroll_cards_stock() -> void:
 	if TutorialManager.is_active:

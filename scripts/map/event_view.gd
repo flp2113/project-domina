@@ -39,6 +39,30 @@ const CAMP_SETUP_BONUS: int = 14
 const TRAVELER_ROB_GOLD: int = 15
 const TRAVELER_ROB_LOSS: int = 10
 const MIN_DECK_FOR_SACRIFICE: int = 3
+# Fonte Encantada
+const FOUNTAIN_DRINK_CARD_CHANCE: float = 0.45
+const FOUNTAIN_THIRST_LOSS: int = 6
+const FOUNTAIN_WISH_COST: int = 5
+const FOUNTAIN_WISH_CHANCE: float = 0.5
+const FOUNTAIN_WISH_GOLD: int = 16
+# Círculo de Cogumelos
+const MUSHROOM_PICK_GOLD: int = 7
+const MUSHROOM_WIN_CHANCE: float = 0.45
+const MUSHROOM_LOSS_CHANCE: float = 0.30
+const MUSHROOM_WIN_GOLD: int = 14
+const MUSHROOM_LOSS_GOLD: int = 8
+const MUSHROOM_AMBUSH_BONUS: int = 10
+# Caçador Solitário
+const HUNTER_SWAP_COST: int = 4
+const HUNTER_DUEL_BONUS: int = 14
+# Bruxa da Clareira
+const WITCH_CARD_CHANCE: float = 0.45
+const WITCH_LOSS_CHANCE: float = 0.30
+const WITCH_GOLD: int = 10
+const WITCH_HERBS_COST: int = 10
+# Monge Ermitão
+const MONK_SWAP_COST: int = 8
+const MONK_ALMS_GOLD: int = 5
 
 var hud_bar: HUDBar
 var inventory_ui: InventoryUI
@@ -155,6 +179,51 @@ func _build_events() -> Array[Dictionary]:
 				{"id": "skip", "label": "CONTORNAR", "hint": "Segue viagem"},
 			]
 		},
+		{
+			"id": "fountain", "title": "FONTE ENCANTADA",
+			"text": "No meio da clareira, uma fonte de pedra coberta de musgo brilha com uma luz azulada. Moedas antigas repousam no fundo.",
+			"choices": [
+				{"id": "drink", "label": "BEBER DA FONTE", "hint": "%d%%: 1 carta (comum ou rara)  /  %d%%: -%d ouro" % [_pct(FOUNTAIN_DRINK_CARD_CHANCE), _pct(1.0 - FOUNTAIN_DRINK_CARD_CHANCE), FOUNTAIN_THIRST_LOSS]},
+				{"id": "wish", "label": "FAZER UM PEDIDO (%d ouro)" % FOUNTAIN_WISH_COST, "hint": "%d%%: +%d ouro  /  %d%%: nada acontece" % [_pct(FOUNTAIN_WISH_CHANCE), FOUNTAIN_WISH_GOLD, _pct(1.0 - FOUNTAIN_WISH_CHANCE)], "requires": "gold_%d" % FOUNTAIN_WISH_COST},
+				{"id": "skip", "label": "SEGUIR VIAGEM", "hint": "Nada acontece"},
+			]
+		},
+		{
+			"id": "mushrooms", "title": "CÍRCULO DE COGUMELOS",
+			"text": "Cogumelos de chapéu vermelho formam um círculo perfeito no chão. O ar ali cheira a mel e, de longe, você ouve risadinhas.",
+			"choices": [
+				{"id": "pick", "label": "COLHER PARA VENDER", "hint": "+%d ouro" % MUSHROOM_PICK_GOLD},
+				{"id": "eat", "label": "COMER UM COGUMELO", "hint": "%d%%: +%d ouro  /  %d%%: -%d ouro  /  %d%%: EMBOSCADA" % [_pct(MUSHROOM_WIN_CHANCE), MUSHROOM_WIN_GOLD, _pct(MUSHROOM_LOSS_CHANCE), MUSHROOM_LOSS_GOLD, _pct(1.0 - MUSHROOM_WIN_CHANCE - MUSHROOM_LOSS_CHANCE)]},
+				{"id": "skip", "label": "NÃO PISAR NO CÍRCULO", "hint": "Segue viagem"},
+			]
+		},
+		{
+			"id": "hunter", "title": "CAÇADOR SOLITÁRIO",
+			"text": "Um caçador de capa verde afia a faca sobre um tronco. Ele olha para o seu baralho e sorri de canto: diz que conhece um bom negócio e uma boa briga.",
+			"choices": [
+				{"id": "swap", "label": "TROCAR UMA CARTA (%d ouro)" % HUNTER_SWAP_COST, "hint": "1 carta aleatória vira outra da mesma raridade", "requires": "swapcard_%d" % HUNTER_SWAP_COST},
+				{"id": "challenge", "label": "DESAFIAR PARA UM DUELO", "hint": "Duelo garantido. Vitória: +%d ouro" % HUNTER_DUEL_BONUS},
+				{"id": "skip", "label": "RECUSAR", "hint": "Segue viagem"},
+			]
+		},
+		{
+			"id": "witch", "title": "BRUXA DA CLAREIRA",
+			"text": "Um caldeirão borbulha sobre uma fogueira verde. A bruxa mexe a colher de pau sem tirar os olhos de você. \"Tenho algo para quem tem coragem\", diz.",
+			"choices": [
+				{"id": "potion", "label": "BEBER A POÇÃO", "hint": "%d%%: carta rara ou melhor  /  %d%%: perde 1 carta  /  %d%%: +%d ouro" % [_pct(WITCH_CARD_CHANCE), _pct(WITCH_LOSS_CHANCE), _pct(1.0 - WITCH_CARD_CHANCE - WITCH_LOSS_CHANCE), WITCH_GOLD]},
+				{"id": "herbs", "label": "COMPRAR ERVAS (%d ouro)" % WITCH_HERBS_COST, "hint": "Ganha 1 carta comum", "requires": "gold_%d" % WITCH_HERBS_COST},
+				{"id": "skip", "label": "RECUSAR", "hint": "Segue viagem"},
+			]
+		},
+		{
+			"id": "monk", "title": "MONGE ERMITÃO",
+			"text": "Sentado sob uma árvore antiga, um monge de olhos fechados fala sem se virar: \"As Leis que você carrega podem ter um caminho melhor. Quer que eu as reescreva?\"",
+			"choices": [
+				{"id": "swap", "label": "REESCREVER UMA LEI (%d ouro)" % MONK_SWAP_COST, "hint": "1 Lei aleatória sua é trocada por outra", "requires": "swaplaw_%d" % MONK_SWAP_COST},
+				{"id": "alms", "label": "DEIXAR UMA ESMOLA", "hint": "Ele retribui com +%d ouro de sabedoria prática" % MONK_ALMS_GOLD},
+				{"id": "skip", "label": "SEGUIR VIAGEM", "hint": "Segue viagem"},
+			]
+		},
 	]
 
 func _pick_event() -> Dictionary:
@@ -186,6 +255,10 @@ func _requirement_met(req: String) -> bool:
 			return RunManager.player_deck.size() >= amount
 		"upgradable":
 			return RunManager.gold >= amount and not _upgradable_cards().is_empty()
+		"swapcard":
+			return RunManager.gold >= amount and not RunManager.player_deck.is_empty()
+		"swaplaw":
+			return RunManager.gold >= amount and not RunManager.active_rules.is_empty()
 	return true
 
 func _requirement_text(req: String) -> String:
@@ -194,6 +267,8 @@ func _requirement_text(req: String) -> String:
 		"gold": return "Ouro insuficiente"
 		"deck": return "Poucas cartas"
 		"upgradable": return "Sem ouro ou sem carta para melhorar"
+		"swapcard": return "Sem ouro ou sem cartas"
+		"swaplaw": return "Sem ouro ou sem Leis"
 	return ""
 
 # ==========================================
@@ -208,7 +283,8 @@ const ART_DIR: String = "res://assets/sprites/events/"
 const EVENT_TINTS := {
 	"chest": Color("#6b4a2a"), "merchant": Color("#4a3a6b"), "altar": Color("#3f6f8a"),
 	"forge": Color("#8a4a2a"), "library": Color("#4a5a7a"), "traveler": Color("#5a6a3a"),
-	"camp": Color("#6a3a3a"),
+	"camp": Color("#6a3a3a"), "fountain": Color("#3a7a8a"), "mushrooms": Color("#8a3a4a"),
+	"hunter": Color("#4a6a3a"), "witch": Color("#5a3a7a"), "monk": Color("#7a6a3a"),
 }
 
 func _setup_ui() -> void:
@@ -474,8 +550,8 @@ func _show_event() -> void:
 func _choice_color(choice_id: String) -> Color:
 	match choice_id:
 		"skip": return Color(0.45, 0.45, 0.5)
-		"pry", "tome", "rob", "search": return Color(0.9, 0.5, 0.3)
-		"setup": return Color(0.85, 0.35, 0.35)
+		"pry", "tome", "rob", "search", "eat", "potion", "drink", "wish": return Color(0.9, 0.5, 0.3)
+		"setup", "challenge": return Color(0.85, 0.35, 0.35)
 		_: return Color(0.4, 0.85, 0.5)
 
 func _refresh_gold_label() -> void:
@@ -513,6 +589,28 @@ func _luck_segments(event_id: String, choice_id: String) -> Array:
 			return [
 				{"key": "card", "chance": CAMP_SEARCH_CHANCE, "label": "CARTA", "kind": "good"},
 				{"key": "ambush", "chance": 1.0 - CAMP_SEARCH_CHANCE, "label": "EMBOSCADA", "kind": "danger"},
+			]
+		"fountain.drink":
+			return [
+				{"key": "card", "chance": FOUNTAIN_DRINK_CARD_CHANCE, "label": "CARTA", "kind": "good"},
+				{"key": "thirst", "chance": 1.0 - FOUNTAIN_DRINK_CARD_CHANCE, "label": "-%d OURO" % FOUNTAIN_THIRST_LOSS, "kind": "bad"},
+			]
+		"fountain.wish":
+			return [
+				{"key": "win", "chance": FOUNTAIN_WISH_CHANCE, "label": "+%d OURO" % FOUNTAIN_WISH_GOLD, "kind": "good"},
+				{"key": "none", "chance": 1.0 - FOUNTAIN_WISH_CHANCE, "label": "NADA", "kind": "bad"},
+			]
+		"mushrooms.eat":
+			return [
+				{"key": "win", "chance": MUSHROOM_WIN_CHANCE, "label": "+%d OURO" % MUSHROOM_WIN_GOLD, "kind": "good"},
+				{"key": "loss", "chance": MUSHROOM_LOSS_CHANCE, "label": "-%d OURO" % MUSHROOM_LOSS_GOLD, "kind": "bad"},
+				{"key": "ambush", "chance": 1.0 - MUSHROOM_WIN_CHANCE - MUSHROOM_LOSS_CHANCE, "label": "EMBOSCADA", "kind": "danger"},
+			]
+		"witch.potion":
+			return [
+				{"key": "card", "chance": WITCH_CARD_CHANCE, "label": "CARTA RARA", "kind": "good"},
+				{"key": "loss", "chance": WITCH_LOSS_CHANCE, "label": "PERDE CARTA", "kind": "bad"},
+				{"key": "gold", "chance": 1.0 - WITCH_CARD_CHANCE - WITCH_LOSS_CHANCE, "label": "+%d OURO" % WITCH_GOLD, "kind": "good"},
 			]
 	return []
 
@@ -678,6 +776,49 @@ func _resolve(event_id: String, choice_id: String, outcome: String = "") -> Stri
 			if outcome == "card":
 				return _give_card(_random_card(ActionCard.Rarity.COMMON, ActionCard.Rarity.RARE), "ENCONTRADA")
 			return _start_ambush("ambushed", CAMP_SEARCH_AMBUSH_BONUS, "Uma corda estala: era armadilha! O bando surge de todos os lados.")
+		"fountain":
+			if choice_id == "drink":
+				if outcome == "card":
+					return "A água é doce e fria. Algo brilha no fundo e vem até suas mãos. %s" % _give_card(_random_card(ActionCard.Rarity.COMMON, ActionCard.Rarity.RARE), "ENCONTRADA")
+				return "A água estava turva: você passa mal e perde %d de ouro em remédios." % _lose_gold(FOUNTAIN_THIRST_LOSS)
+			RunManager.spend_gold(FOUNTAIN_WISH_COST)
+			if outcome == "win":
+				RunManager.add_gold(FOUNTAIN_WISH_GOLD)
+				return "A fonte brilha e devolve mais do que você deu: +%d de ouro." % FOUNTAIN_WISH_GOLD
+			return "A moeda afunda e a água volta a ficar parada. Nada acontece (-%d de ouro)." % FOUNTAIN_WISH_COST
+		"mushrooms":
+			if choice_id == "pick":
+				RunManager.add_gold(MUSHROOM_PICK_GOLD)
+				return "Você colhe um cesto inteiro sem pisar no círculo: +%d de ouro." % MUSHROOM_PICK_GOLD
+			if outcome == "win":
+				RunManager.add_gold(MUSHROOM_WIN_GOLD)
+				return "O mundo gira e você acorda com moedas de fada nos bolsos: +%d de ouro." % MUSHROOM_WIN_GOLD
+			if outcome == "loss":
+				return "As fadas cobram pela dança: você perde %d de ouro." % _lose_gold(MUSHROOM_LOSS_GOLD)
+			return _start_ambush("ambushed", MUSHROOM_AMBUSH_BONUS, "As risadinhas viram gritos: os duendes do círculo cercam você!")
+		"hunter":
+			if choice_id == "challenge":
+				return _start_ambush("ambushed", HUNTER_DUEL_BONUS, "\"Sem rancor\", ele diz, e arma o tabuleiro sobre o tronco. O duelo começa.")
+			return _hunter_swap()
+		"witch":
+			if choice_id == "herbs":
+				RunManager.spend_gold(WITCH_HERBS_COST)
+				return "Ela embrulha um punhado de ervas e algo mais. %s" % _give_card(_random_card(ActionCard.Rarity.COMMON, ActionCard.Rarity.COMMON), "RECEBIDA")
+			if outcome == "card":
+				return "A poção queima, mas você sente o poder de uma carta nova. %s" % _give_card(_random_card(ActionCard.Rarity.RARE, ActionCard.Rarity.EPIC), "RECEBIDA")
+			if outcome == "loss":
+				var lost = _take_random_card()
+				if lost != null:
+					preview_hbox.add_child(_labeled_card_visual("PERDIDA", lost, Color(1.0, 0.6, 0.6, 0.8)))
+					return "A poção apaga uma carta da sua memória:"
+				return "A poção é amarga, mas você não tem nada a perder."
+			RunManager.add_gold(WITCH_GOLD)
+			return "Ela ri e joga moedas no seu colo. \"Gostei da sua cara.\" +%d de ouro." % WITCH_GOLD
+		"monk":
+			if choice_id == "alms":
+				RunManager.add_gold(MONK_ALMS_GOLD)
+				return "O monge sorri e aponta uma trilha curta: +%d de ouro." % MONK_ALMS_GOLD
+			return _monk_swap_law()
 	return ""
 
 # Marca o desfecho como duelo (o botão vira "LUTAR!"); devolve o texto da cena.
@@ -744,6 +885,56 @@ func _forge_card() -> String:
 	preview_hbox.add_child(_labeled_card_visual("DEPOIS", upgraded, Color(1.2, 1.15, 0.85)))
 	return "A carta sai da forja transformada (-%d de ouro):" % FORGE_COST
 
+# Caçador: troca 1 carta aleatória do baralho por outra da MESMA raridade (outro id).
+func _hunter_swap() -> String:
+	if RunManager.player_deck.is_empty():
+		return "O caçador não vê nenhuma carta para trocar."
+	var old_card: ActionCard = RunManager.player_deck[randi() % RunManager.player_deck.size()]
+	var pool = LootTables.get_player_action_cards().filter(func(c: ActionCard): return c.rarity == old_card.rarity and c.id != old_card.id)
+	if pool.is_empty():
+		pool = LootTables.get_all_action_cards().filter(func(c: ActionCard): return c.rarity == old_card.rarity and c.id != old_card.id)
+	if pool.is_empty():
+		return "Ele balança a cabeça: não há troca justa para essa carta. Seu ouro fica com você."
+	RunManager.spend_gold(HUNTER_SWAP_COST)
+	var new_card: ActionCard = LootTables.pick_weighted_actions(pool, 1)[0]
+	RunManager.player_deck[RunManager.player_deck.find(old_card)] = new_card
+	preview_hbox.add_child(_labeled_card_visual("ANTES", old_card, Color(1.0, 0.7, 0.7, 0.85)))
+	var arrow = Label.new()
+	arrow.text = "→"
+	arrow.add_theme_font_size_override("font_size", 46)
+	arrow.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	preview_hbox.add_child(arrow)
+	preview_hbox.add_child(_labeled_card_visual("DEPOIS", new_card, Color(1.2, 1.15, 0.85)))
+	return "Negócio fechado (-%d de ouro):" % HUNTER_SWAP_COST
+
+# Monge: revoga 1 Lei aleatória e entrega outra que o jogador ainda não tem.
+func _monk_swap_law() -> String:
+	if RunManager.active_rules.is_empty():
+		return "O monge não encontra nenhuma Lei sua para reescrever."
+	var old_rule: RuleCard = RunManager.active_rules[randi() % RunManager.active_rules.size()]
+	var owned_ids: Array[String] = []
+	for r in RunManager.active_rules:
+		owned_ids.append(r.id)
+	var pool = LootTables.get_player_rules().filter(func(r: RuleCard): return not owned_ids.has(r.id))
+	if pool.is_empty():
+		pool = LootTables.get_all_rules().filter(func(r: RuleCard): return not owned_ids.has(r.id))
+	pool.shuffle()
+	RunManager.remove_rule(old_rule.id)
+	for cand in pool:
+		if RunManager.add_rule(cand):
+			RunManager.spend_gold(MONK_SWAP_COST)
+			preview_hbox.add_child(_labeled_law_visual("REVOGADA", old_rule, Color(1.0, 0.7, 0.7, 0.85)))
+			var arrow = Label.new()
+			arrow.text = "→"
+			arrow.add_theme_font_size_override("font_size", 46)
+			arrow.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+			preview_hbox.add_child(arrow)
+			preview_hbox.add_child(_labeled_law_visual("NOVA LEI", cand, Color(1.2, 1.15, 0.85)))
+			return "O monge reescreve suas leis (-%d de ouro):" % MONK_SWAP_COST
+	# Nenhuma serviu (todas incompatíveis ou sem opções): devolve a original.
+	RunManager.add_rule(old_rule)
+	return "O monge medita... mas não encontra uma Lei melhor para você. Seu ouro fica com você."
+
 func _give_random_law() -> String:
 	var owned_ids: Array[String] = []
 	for r in RunManager.active_rules:
@@ -776,6 +967,7 @@ func _on_leave_pressed() -> void:
 		RunManager.ambush_bonus_gold = pending_ambush_bonus
 		RunManager.current_node_type = MapNode.NodeType.Duelo
 		RunManager.current_board_size = RunManager.AMBUSH_BOARD_SIZE
+		RunManager.current_board_layout = Board.LAYOUT_CLASSIC
 		SceneTransition.go("res://main.tscn")
 		return
 	SceneTransition.go(MAP_SCENE_PATH)

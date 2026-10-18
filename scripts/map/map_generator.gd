@@ -32,8 +32,13 @@ const POSSIBLE_BOARD_SIZES: Array[Vector2i] = [
 	Vector2i(4, 8),
 	Vector2i(6, 8),
 	Vector2i(8, 6),
-	Vector2i(8, 10)
+	Vector2i(8, 10),
+	Vector2i(7, 7),
+	Vector2i(9, 9),
+	Vector2i(6, 10)
 ]
+# Chance de um duelo sortear uma disposição diferente da clássica.
+const SPECIAL_LAYOUT_CHANCE: float = 0.8
 
 func generate_map() -> Array[Array]:
 	var layers: Array[Array] = []
@@ -102,7 +107,17 @@ func _make_node(layer: int, index: int, type: int) -> MapNode:
 			node.board_size = Vector2i(10, 10)   # chefe em tabuleiro maior
 		MapNode.NodeType.Duelo, MapNode.NodeType.DueloForte:
 			node.board_size = POSSIBLE_BOARD_SIZES.pick_random()
+			node.board_layout = _roll_layout(node.board_size)
 	return node
+
+# Disposição inicial do duelo: clássica ou uma das que servem para o tamanho.
+func _roll_layout(size: Vector2i) -> String:
+	if randf() >= SPECIAL_LAYOUT_CHANCE:
+		return Board.LAYOUT_CLASSIC
+	var options: Array[String] = Board.layouts_for_size(size.x, size.y)
+	if options.is_empty():
+		return Board.LAYOUT_CLASSIC
+	return options.pick_random()
 
 # Sorteia os tipos de uma camada intermediária seguindo LAYER_ROLES.
 func _roll_layer_types(layer: int) -> Array:

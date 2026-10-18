@@ -69,6 +69,43 @@ func _get_tile_effects(board: Board, row: int, col: int) -> Array:
 			"title_color": Color(1.0, 0.5, 0.15)
 		})
 
+	# Leis do Chefe da Floresta que vivem nas casas CLARAS.
+	if board.vine_tiles.has(pos):
+		effects.append({
+			"title": "CIPÓ",
+			"desc": "Peças ao lado do cipó podem atravessá-lo: andam 2 casas em linha reta até o outro lado, se a casa estiver livre. Recuar por ele só vale para quem pode andar para trás. Muda de lugar a cada 4 rodadas.",
+			"affects": "both",
+			"title_color": Color(0.45, 0.9, 0.4)
+		})
+	if board.lit_tiles.has(pos):
+		effects.append({
+			"title": "CASA ACESA",
+			"desc": "Acesa por %d turno(s): as pecas de quem a acendeu nas 4 casas de lado nao podem ser capturadas." % board.lit_tiles[pos]["turns"],
+			"affects": "player",
+			"title_color": Color(1.0, 0.9, 0.45)
+		})
+	if board.firefly_tiles.has(pos):
+		effects.append({
+			"title": "VAGA-LUME",
+			"desc": "Peças ao lado desta luz (nos 4 lados) não podem ser capturadas. Ela voa 1 casa por rodada; o próximo passo aparece marcado.",
+			"affects": "both",
+			"title_color": Color(0.95, 1.0, 0.5)
+		})
+	if board.is_firefly_protected(pos) and board.grid[row][col] != Board.EMPTY and not board.grid[row][col].is_tree:
+		effects.append({
+			"title": "PROTEGIDA PELA LUZ",
+			"desc": "Há uma luz ao lado (vaga-lume ou casa acesa): esta peça não pode ser capturada enquanto ela durar.",
+			"affects": "both",
+			"title_color": Color(0.95, 1.0, 0.5)
+		})
+	if board.hungry_roots_team != 0 and board.grid[row][col] != Board.EMPTY and board.grid[row][col].rooted_turns > 0:
+		effects.append({
+			"title": "ENRAIZADA",
+			"desc": "Presa pelas Raízes Famintas: não pode se mover por mais %d turno(s)." % board.grid[row][col].rooted_turns,
+			"affects": "player",
+			"title_color": Color(0.45, 0.85, 0.35)
+		})
+
 	if board.is_center_tile(row, col) and board.rule_pipeline != null:
 		if board.rule_pipeline.has_rule("sacred_zone"):
 			effects.append({

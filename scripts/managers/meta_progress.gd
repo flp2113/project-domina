@@ -76,7 +76,7 @@ var run_strong_won: int = 0
 var run_boss_won: bool = false
 
 # Resumo da última run paga (lido pela tela de fim de run).
-# {won, duels, strong, boss, total, before, after}
+# {won, duels, strong, boss, total, before, after, gold, laws, cards}
 var last_summary: Dictionary = {}
 
 func _ready() -> void:
@@ -436,6 +436,13 @@ func preview_run_coroas() -> int:
 		total += COROAS_BOSS_WIN
 	return total
 
+# [{name, rarity}] das Leis/Cartas da run, para a tela de fim de run.
+func _snapshot_names(items: Array) -> Array:
+	var out: Array = []
+	for it in items:
+		out.append({"name": str(it.name), "rarity": int(it.rarity)})
+	return out
+
 # Paga as Coroas da run, guarda o resumo em last_summary e zera as estatísticas
 # (não paga duas vezes). `won` = a run terminou com o Chefe derrotado.
 func settle_run(won: bool = false) -> int:
@@ -443,6 +450,8 @@ func settle_run(won: bool = false) -> int:
 	last_summary = {
 		"won": won, "duels": run_duels_won, "strong": run_strong_won,
 		"boss": run_boss_won, "total": amount, "before": coroas, "after": coroas + amount,
+		"gold": RunManager.gold, "laws": _snapshot_names(RunManager.active_rules),
+		"cards": _snapshot_names(RunManager.player_deck),
 	}
 	if amount > 0:
 		coroas += amount

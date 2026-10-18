@@ -434,7 +434,9 @@ func _refresh_button_states() -> void:
 		var overlay_name := ""
 		var base_mod := Color.WHITE
 		var label_col := Color.WHITE
-		var clickable: bool = i > 0 and i <= current_index and not _busy
+		# Só o nó atual é clicável: perder um duelo permite tentar o mesmo nó de
+		# novo, mas lições já concluídas (ex.: Loja) não podem ser repetidas.
+		var clickable: bool = i > 0 and i == current_index and not _busy
 		var with_pawn: bool = i == _pawn_index and _pawn_resting
 
 		if i == _pawn_index:

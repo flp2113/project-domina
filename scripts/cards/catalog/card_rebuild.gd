@@ -18,7 +18,7 @@ func can_play(board: Board, human_team: int, _context: Dictionary = {}) -> bool:
 				current_allies += 1
 	# Só pode ser jogada se o jogador perdeu ao menos 1 peça do total inicial
 	@warning_ignore("integer_division")
-	var max_initial = board.get_max_deployment_rows() * (board.cols / 2)
+	var max_initial = board.initial_piece_count if board.initial_piece_count > 0 else board.get_max_deployment_rows() * (board.cols / 2)
 	return current_allies < max_initial
 
 func is_valid_target(board: Board, target_pos: Vector2i, human_team: int, context: Dictionary = {}) -> bool:

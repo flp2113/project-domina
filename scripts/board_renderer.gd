@@ -18,6 +18,24 @@ extends Node2D
 var host: Node2D
 var _mist_tex: GradientTexture2D = null
 
+# Sprites das leis do Chefe da Floresta (assets/sprites/fx). Se um arquivo não
+# existir, o desenho procedural antigo continua servindo de reserva.
+const FX_DIR: String = "res://assets/sprites/fx/"
+const ROOT_GROW_SECS: float = 0.4
+var _fx_cache: Dictionary = {}
+var _root_t0: Dictionary = {}   # instance_id da peça -> ms em que ficou enraizada (visto pela 1ª vez)
+
+func _fx(tex_name: String) -> Texture2D:
+	if not _fx_cache.has(tex_name):
+		var path: String = FX_DIR + tex_name + ".png"
+		_fx_cache[tex_name] = load(path) if ResourceLoader.exists(path) else null
+	return _fx_cache[tex_name]
+
+# Quadrado de 32 px de arte, ampliado em ESCALA INTEIRA (pixel perfeito) e centrado.
+func _sprite_rect(center: Vector2, cell: float) -> Rect2:
+	var px: float = 32.0 * maxf(1.0, floorf(cell / 32.0))
+	return Rect2((center - Vector2(px, px) / 2.0).round(), Vector2(px, px))
+
 func setup(p_host: Node2D) -> void:
 	host = p_host
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -52,6 +70,7 @@ func _draw() -> void:
 		PixelRenderer.draw_pixel_corners(self, tile_rect, Color(1.0, 0.75, 0.1, 0.95), 8.0, 2.5)
 
 	_draw_fire_tiles(board, board_offset, cell_size)
+	_draw_light_tile_laws(board, board_offset, cell_size)
 
 	if board.rule_pipeline != null and (board.rule_pipeline.has_rule("sacred_zone") or board.rule_pipeline.has_rule("power_center")):
 		var center_color = Color(0.85, 0.55, 1.0, 0.4) if board.rule_pipeline.has_rule("sacred_zone") else Color(1.0, 0.85, 0.3, 0.4)
@@ -152,6 +171,7 @@ func _draw() -> void:
 					continue
 				var center = board_offset + Vector2(c * cell_size + cell_size / 2.0, r * cell_size + cell_size / 2.0)
 				var scale_factor = host.piece_spawn_scales.get(pos, 1.0)
+				_draw_roots_back(piece_obj, center, cell_size * scale_factor)
 				PixelRenderer.draw_piece(self, piece_obj, center, cell_size, scale_factor)
 				_draw_piece_status(piece_obj, center, cell_size * scale_factor)
 
@@ -183,7 +203,9 @@ func _draw_fire_tiles(board: Board, board_offset: Vector2, cell_size: float) -> 
 # Marcas de status na peça: bolha azul = escudo (Lei do Luto); grade violeta = imobilizada (Emboscada);
 # selo dourado com número = Dama temporária (Herdeiro, turnos restantes).
 func _draw_piece_status(piece: BoardPiece, center: Vector2, size: float) -> void:
-	if piece.rooted_turns > 0:
+	if piece.rooted_turns > 0 and host.board != null and host.board.hungry_roots_team != 0:
+		_draw_roots_front(piece, center, size)
+	elif piece.rooted_turns > 0:
 		var half = size * 0.34
 		var col = Color(0.62, 0.42, 0.85, 0.95)
 		for i in range(3):
@@ -214,6 +236,174 @@ func _draw_piece_status(piece: BoardPiece, center: Vector2, size: float) -> void
 		var r = size * 0.15
 		var base_y = badge.y + (font.get_ascent(fs) - font.get_descent(fs)) / 2.0
 		draw_string(font, Vector2(badge.x - r, base_y), txt, HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, fs, Color(1.0, 0.9, 0.5))
+
+# Idade (s) das raízes desta peça: começa a contar na 1ª vez que ela é vista
+# enraizada; some do registro quando a peça é liberada.
+func _roots_age(piece: BoardPiece) -> float:
+	var id: int = piece.get_instance_id()
+	if piece.rooted_turns <= 0 or host.board == null or host.board.hungry_roots_team == 0:
+		_root_t0.erase(id)
+		return -1.0
+	if not _root_t0.has(id):
+		_root_t0[id] = Time.get_ticks_msec()
+	return float(Time.get_ticks_msec() - int(_root_t0[id])) / 1000.0
+
+# Camada de TRÁS (desenhada antes da peça): raízes cruzadas na base.
+func _draw_roots_back(piece: BoardPiece, center: Vector2, size: float) -> void:
+	var age: float = _roots_age(piece)
+	if age < ROOT_GROW_SECS:
+		return
+	var tex: Texture2D = _fx("raizes_tras")
+	if tex != null:
+		draw_texture_rect(tex, _sprite_rect(center, size), false)
+
+# Camada da FRENTE (depois da peça): crescendo (spritesheet) e depois as garras.
+func _draw_roots_front(piece: BoardPiece, center: Vector2, size: float) -> void:
+	var age: float = _roots_age(piece)
+	var grow: Texture2D = _fx("raizes_sheet")
+	var front: Texture2D = _fx("raizes_frente")
+	if grow == null or front == null or _fx("raizes_tras") == null:
+		_draw_roots(center, size)
+		return
+	var rect: Rect2 = _sprite_rect(center, size)
+	if age < ROOT_GROW_SECS:
+		var f: int = clampi(int(age / (ROOT_GROW_SECS / 4.0)), 0, 3)
+		draw_texture_rect_region(grow, rect, Rect2(f * 32, 0, 32, 32))
+	else:
+		draw_texture_rect(front, rect, false)
+
+# Reserva procedural (sem os sprites): raízes saindo da base da peça (peça presa por 1 turno).
+func _draw_roots(center: Vector2, size: float) -> void:
+	var brown := Color(0.36, 0.22, 0.1, 0.95)
+	var green := Color(0.4, 0.8, 0.3, 0.95)
+	var base_y: float = center.y + size * 0.26
+	for i in range(-2, 3):
+		var a := Vector2(center.x + i * size * 0.08, base_y)
+		var mid := Vector2(center.x + i * size * 0.15, base_y + size * (0.10 + 0.02 * absi(i)))
+		var b := Vector2(center.x + i * size * 0.2 + (size * 0.05 if i % 2 == 0 else -size * 0.04), base_y + size * 0.19)
+		draw_polyline(PackedVector2Array([a, mid, b]), brown, 3.0)
+		draw_rect(Rect2(b - Vector2(2, 2), Vector2(4, 4)), green)
+	draw_arc(center, size * 0.4, PI * 0.15, PI * 0.85, 10, Color(0.4, 0.8, 0.3, 0.55), 2.0)
+
+# Leis do Chefe que vivem nas casas CLARAS: Cipós e Vaga-lumes.
+func _draw_light_tile_laws(board: Board, board_offset: Vector2, cell_size: float) -> void:
+	var t: float = Time.get_ticks_msec() / 1000.0
+	for pos in board.vine_tiles.keys():
+		_draw_vine(Rect2(board_offset.x + pos.x * cell_size, board_offset.y + pos.y * cell_size, cell_size, cell_size), t, pos)
+	_draw_lit_tiles(board, board_offset, cell_size, t)
+	if board.firefly_tiles.is_empty():
+		return
+	var duel = host.current_duel
+	var now_ms: int = Time.get_ticks_msec()
+	# Zona protegida: as 4 casas de lado de cada vaga-lume brilham de leve.
+	for pos in board.firefly_tiles.keys():
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var q: Vector2i = pos + d
+			if q.x < 0 or q.y < 0 or q.x >= board.cols or q.y >= board.rows:
+				continue
+			var qr := Rect2(board_offset.x + q.x * cell_size, board_offset.y + q.y * cell_size, cell_size, cell_size)
+			draw_rect(qr, Color(0.95, 1.0, 0.5, 0.10 + 0.04 * sin(t * 3.0 + q.x + q.y)))
+			PixelRenderer.draw_pixel_corners(self, qr, Color(0.95, 1.0, 0.55, 0.55), 6.0, 2.0)
+	for pos in board.firefly_tiles.keys():
+		var center := board_offset + Vector2(pos.x * cell_size + cell_size / 2.0, pos.y * cell_size + cell_size / 2.0)
+		# Desliza da casa anterior se acabou de se mover.
+		if duel is DuelBoss:
+			for fm in duel.firefly_moves:
+				if fm["to"] == pos:
+					var k: float = clampf(float(now_ms - int(fm["t0"])) / float(DuelBoss.FIREFLY_ANIM_MS), 0.0, 1.0)
+					if k < 1.0:
+						var from_c := board_offset + Vector2(fm["from"].x * cell_size + cell_size / 2.0, fm["from"].y * cell_size + cell_size / 2.0)
+						center = from_c.lerp(center, k * k * (3.0 - 2.0 * k))
+		_draw_firefly(center, cell_size, t, pos)
+	# Próximo passo (marcado): linha pontilhada + anel na casa de destino.
+	if duel is DuelBoss:
+		for from_p in duel.firefly_plan.keys():
+			var to_p: Vector2i = duel.firefly_plan[from_p]
+			if to_p == from_p or not board.firefly_tiles.has(from_p):
+				continue
+			var a := board_offset + Vector2(from_p.x * cell_size + cell_size / 2.0, from_p.y * cell_size + cell_size / 2.0)
+			var b := board_offset + Vector2(to_p.x * cell_size + cell_size / 2.0, to_p.y * cell_size + cell_size / 2.0)
+			draw_dashed_line(a, b, Color(0.95, 1.0, 0.5, 0.45), 2.0, 6.0)
+			var ptex: Texture2D = _fx("vagalume_proximo")
+			if ptex != null:
+				draw_texture_rect(ptex, _sprite_rect(b, cell_size), false)
+			else:
+				draw_arc(b, cell_size * 0.14 + 1.5 * sin(t * 4.0), 0, TAU, 14, Color(0.95, 1.0, 0.5, 0.6), 2.0)
+
+# Casas acesas pela carta Acender Casa: luz quente fixa + brilho nas 4 casas de
+# lado (só as do time protegido, que são as que de fato ficam a salvo).
+func _draw_lit_tiles(board: Board, board_offset: Vector2, cell_size: float, t: float) -> void:
+	for pos in board.lit_tiles.keys():
+		var info: Dictionary = board.lit_tiles[pos]
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var q: Vector2i = pos + d
+			if q.x < 0 or q.y < 0 or q.x >= board.cols or q.y >= board.rows:
+				continue
+			var occ: BoardPiece = board.grid[q.y][q.x]
+			if occ == Board.EMPTY or occ.owner_team != info["team"]:
+				continue
+			var qr := Rect2(board_offset.x + q.x * cell_size, board_offset.y + q.y * cell_size, cell_size, cell_size)
+			draw_rect(qr, Color(1.0, 0.88, 0.4, 0.12 + 0.04 * sin(t * 3.0 + q.x + q.y)))
+			PixelRenderer.draw_pixel_corners(self, qr, Color(1.0, 0.9, 0.45, 0.6), 6.0, 2.0)
+		var center := board_offset + Vector2(pos.x * cell_size + cell_size / 2.0, pos.y * cell_size + cell_size / 2.0)
+		draw_circle(center, cell_size * 0.40, Color(1.0, 0.85, 0.35, 0.10 + 0.04 * sin(t * 2.5 + pos.x)))
+		_draw_firefly(center, cell_size, t, pos)
+		# Pontinhos = turnos restantes.
+		var u: float = maxf(2.0, floorf(cell_size / 16.0))
+		for i in range(int(info["turns"])):
+			draw_rect(Rect2((center + Vector2((i - (int(info["turns"]) - 1) / 2.0) * u * 2.5 - u / 2.0, cell_size * 0.36)).floor(), Vector2(u, u)), Color(1.0, 0.92, 0.5))
+
+func _draw_firefly(center: Vector2, cell: float, t: float, pos: Vector2i) -> void:
+	var ftex: Texture2D = _fx("vagalume_sheet")
+	if ftex != null:
+		var fph: float = t * 2.4 + pos.x * 1.7 + pos.y * 2.3
+		var fc := center + Vector2(sin(fph) * 0.05, cos(fph * 1.3) * 0.05) * cell
+		var ff: int = (int(t * 8.0) + pos.x * 2) % 6
+		draw_texture_rect_region(ftex, _sprite_rect(fc, cell), Rect2(ff * 32, 0, 32, 32))
+		return
+	var ph: float = t * 2.4 + pos.x * 1.7 + pos.y * 2.3
+	var c := center + Vector2(sin(ph) * 0.05, cos(ph * 1.3) * 0.05) * cell
+	var pulse: float = 0.5 + 0.5 * sin(t * 4.0 + pos.x * 2.0)
+	draw_circle(c, cell * 0.34, Color(0.85, 1.0, 0.4, 0.07 + 0.04 * pulse))
+	draw_circle(c, cell * 0.22, Color(0.9, 1.0, 0.45, 0.14 + 0.06 * pulse))
+	draw_circle(c, cell * 0.11, Color(1.0, 1.0, 0.65, 0.5 + 0.2 * pulse))
+	var u: float = maxf(2.0, floorf(cell / 16.0))
+	draw_rect(Rect2((c - Vector2(u, u)).floor(), Vector2(u * 2.0, u * 2.0)), Color(1.0, 1.0, 0.85))
+	for i in range(3):
+		var a: float = t * 1.6 + i * TAU / 3.0 + pos.x
+		var sp := c + Vector2(cos(a), sin(a * 1.2)) * cell * 0.28
+		draw_rect(Rect2(sp.floor(), Vector2(u, u)), Color(1.0, 1.0, 0.6, 0.55))
+
+# Cipó: cruz de trepadeira (horizontal + vertical) com folhas e uma florzinha,
+# em blocos de pixel pra combinar com o resto do tabuleiro.
+func _draw_vine(rect: Rect2, t: float, pos: Vector2i) -> void:
+	var vtex: Texture2D = _fx("cipo_sheet")
+	if vtex != null:
+		var vf: int = (int(t * 4.0) + pos.x * 3 + pos.y) % 4
+		draw_texture_rect_region(vtex, _sprite_rect(rect.get_center(), rect.size.x), Rect2(vf * 32, 0, 32, 32))
+		return
+	var u: float = maxf(2.0, floorf(rect.size.x / 16.0))
+	var o: Vector2 = rect.position
+	var n: int = int(rect.size.x / u)
+	var dark := Color(0.12, 0.38, 0.14)
+	var mid := Color(0.24, 0.6, 0.2)
+	var leaf := Color(0.5, 0.86, 0.3)
+	draw_rect(Rect2(o + Vector2(u, u), rect.size - Vector2(u * 2.0, u * 2.0)), Color(0.05, 0.2, 0.08, 0.18))
+	var sway: float = sin(t * 1.8 + pos.x + pos.y * 1.3)
+	for i in range(n):
+		var wob: float = round(sin(i * 0.9 + t * 1.2) * 0.8 + sway * 0.4)
+		var col: Color = dark if i % 2 == 0 else mid
+		# horizontal
+		draw_rect(Rect2(o + Vector2(i * u, rect.size.y / 2.0 - u + wob * u), Vector2(u, u * 2.0)), col)
+		# vertical
+		draw_rect(Rect2(o + Vector2(rect.size.x / 2.0 - u + wob * u, i * u), Vector2(u * 2.0, u)), col)
+	for k in range(4):
+		var f: float = (k + 0.5) / 4.0
+		draw_rect(Rect2(o + Vector2(rect.size.x * f, rect.size.y / 2.0 - u * 3.0), Vector2(u * 2.0, u * 2.0)), leaf)
+		draw_rect(Rect2(o + Vector2(rect.size.x / 2.0 + u * 1.5, rect.size.y * f), Vector2(u * 2.0, u * 2.0)), leaf)
+	var cc: Vector2 = o + rect.size / 2.0
+	draw_rect(Rect2(cc - Vector2(u * 2.0, u * 2.0), Vector2(u * 4.0, u * 4.0)), dark)
+	draw_rect(Rect2(cc - Vector2(u, u), Vector2(u * 2.0, u * 2.0)), Color(0.96, 0.55, 0.72))
 
 # Escuridão da Noite da Coruja (sobre peças já desenhadas, com as peças do
 # chefe encobertas pela névoa) + texto de status acima do tabuleiro.

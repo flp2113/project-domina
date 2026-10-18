@@ -154,9 +154,14 @@ func play_tongue_attack(board: Board, tiles_to_attack: Array) -> void:
 		# 3. Captura a peça se houver (a mosca já fugiu — isso é só sobre a
 		# peça de damas que estiver na casa, não a mosca)
 		if piece_on_tile != Board.EMPTY:
-			devouring_piece = piece_on_tile
-			board.grid[tile.y][tile.x] = Board.EMPTY
-			get_parent().queue_redraw()
+			# Última Chance: a Dama do jogador pode escapar da língua.
+			var escaped: bool = false
+			if piece_on_tile.is_king and "human_team" in get_parent():
+				escaped = await RuleLastChance.try_save(get_parent(), tile, piece_on_tile)
+			if not escaped:
+				devouring_piece = piece_on_tile
+				board.grid[tile.y][tile.x] = Board.EMPTY
+				get_parent().queue_redraw()
 
 		# 4. Língua recolhe
 		var retract_tween = create_tween()

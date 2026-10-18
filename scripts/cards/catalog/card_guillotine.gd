@@ -25,6 +25,9 @@ func execute(board: Board, target_pos: Vector2i, _human_team: int, context: Dict
 	var piece: BoardPiece = board.grid[target_pos.y][target_pos.x]
 	if piece == Board.EMPTY:
 		return
+	# Última Chance: se a Dama é do jogador (Guilhotina da IA), a moeda gira antes.
+	if await RuleLastChance.try_save(context.get("main"), target_pos, piece):
+		return
 	board.grid[target_pos.y][target_pos.x] = Board.EMPTY
 	board.piece_destroyed.emit(target_pos, piece)
 	_pop_banner(context, "GUILHOTINA!", Color(0.9, 0.25, 0.3), target_pos)
